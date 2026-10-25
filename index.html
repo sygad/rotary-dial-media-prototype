@@ -19,7 +19,7 @@
 :root{
   color-scheme: light;
   --page-bg:#ecebe7; --page-fg:#1b1b1b; --page-muted:#6b6b6b;
-  --card:#f7f6f3; --line:#d6d4ce; --accent:#3c8194; --accent-fg:#fff; --ovl:#008fa8;
+  --card:#f7f6f3; --line:#d6d4ce; --accent:#3c8194; --accent-fg:#fff;
   --bezel:#0b0b0b; --bezel-edge:#343434;
   --teal:#3c8194; --magenta:#9C0D90; --pink:#AB1049; --yellow:#ECD613;
   --ico-teal:#32ACA4;
@@ -31,13 +31,13 @@
   :root:not([data-theme="light"]){
     color-scheme: dark;
     --page-bg:#131313; --page-fg:#f1f1f1; --page-muted:#9b9b9b; --bezel-edge:#4a4a4a;
-    --card:#1c1c1c; --line:#333; --accent:#4a9db3; --ovl:#3fe0ff;
+    --card:#1c1c1c; --line:#333; --accent:#4a9db3;
   }
 }
 :root[data-theme="dark"]{
   color-scheme: dark;
   --page-bg:#131313; --page-fg:#f1f1f1; --page-muted:#9b9b9b; --bezel-edge:#4a4a4a;
-  --card:#1c1c1c; --line:#333; --accent:#4a9db3; --ovl:#3fe0ff;
+  --card:#1c1c1c; --line:#333; --accent:#4a9db3;
 }
 *,*::before,*::after{box-sizing:inherit}
 html,body{margin:0;padding:0}
@@ -80,10 +80,10 @@ kbd{font:inherit;font-size:10.5px;border:1px solid var(--line);border-bottom-wid
   background:radial-gradient(circle at 35% 30%,#5a5a5a,#1d1d1d 70%);
   box-shadow:0 6px 16px rgba(0,0,0,.35), inset 0 0 0 3px #2a2a2a;position:relative}
 .knob:active{cursor:grabbing}
-.knob-cap{position:absolute;inset:0;border-radius:50%;
+.knob-cap{position:absolute;inset:0;border-radius:50%;transition:transform .1s linear;
   background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.07) 0 4deg,transparent 4deg 8deg)}
 .knob-mark{position:absolute;left:50%;top:8px;width:4px;height:18px;margin-left:-2px;
-  border-radius:2px;background:var(--yellow)}
+  border-radius:2px;background:var(--yellow);transition:background .2s}
 .dial-side{display:flex;flex-direction:column;gap:8px;flex:1;min-width:0}
 .dial-btns{display:flex;gap:6px}
 .dial-target{font-size:12px;line-height:1.4}
@@ -102,29 +102,11 @@ kbd{font:inherit;font-size:10.5px;border:1px solid var(--line);border-bottom-wid
   vertical-align:middle;margin-right:6px;overflow:hidden}
 .meter i{display:block;height:100%}
 
-.toggles{display:flex;flex-direction:column;gap:6px;font-size:12px}
-.toggles label{display:flex;gap:8px;align-items:center;cursor:pointer}
-.zoom{display:flex;gap:6px;margin-top:10px;align-items:center;font-size:12px;color:var(--page-muted)}
-
-.log{list-style:none;margin:0;padding:0;font-size:11.5px;line-height:1.5;max-height:168px;overflow:auto}
-.log li{display:flex;gap:8px;border-bottom:1px solid var(--line);padding:2px 0}
-.log li:last-child{border-bottom:0}
-.log .src{flex:none;width:58px;color:var(--page-muted)}
-.coords{font-size:11.5px;color:var(--page-muted);font-variant-numeric:tabular-nums;min-height:1.4em}
 .links{font-size:12px;text-align:center;color:var(--page-muted)}
 .links a{color:inherit}
 
-/* ---------- design overlay (inside the 360 stage) ---------- */
-.ovl{position:absolute;inset:0;z-index:200;pointer-events:none;display:none}
-.show-bounds .ovl.bounds,.show-zone .ovl.zone{display:block}
-.ovl b{position:absolute;outline:1px dashed var(--ovl);font-weight:400}
-.ovl b span{position:absolute;left:0;top:-11px;font-size:8px;line-height:10px;white-space:nowrap;
-  color:#000;background:var(--ovl);padding:0 2px}
-.ovl b.lo span{top:auto;bottom:-11px}
-.ovl svg{position:absolute;inset:0;width:360px;height:360px}
-
 /* ---------- device engine (verbatim from prototype/index.html) ---------- */
-.device{position:relative;width:min(var(--dev,360px),86vw,100%);aspect-ratio:1;border-radius:50%;
+.device{position:relative;width:min(360px,86vw);aspect-ratio:1;border-radius:50%;
   background:#000;box-shadow:0 14px 38px rgba(0,0,0,.35);
   touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
 .stage{position:absolute;top:0;left:0;width:360px;height:360px;transform-origin:top left}
@@ -308,14 +290,6 @@ kbd{font:inherit;font-size:10.5px;border:1px solid var(--line);border-bottom-wid
     </svg>
   </div>
 
-  <!-- playground overlays, drawn in the 360 design space -->
-  <div class="ovl bounds" id="ovlBounds"></div>
-  <div class="ovl zone"><svg viewBox="0 0 360 360">
-    <circle cx="180" cy="180" r="122.4" fill="rgba(236,214,19,.08)" stroke="#ECD613" stroke-dasharray="4 4"/>
-    <text x="180" y="66" fill="#ECD613" font-size="9" text-anchor="middle">touch inside → swipe</text>
-    <text x="180" y="40" fill="#ECD613" font-size="9" text-anchor="middle">start out here + go round → dial</text>
-  </svg></div>
-
 </div></div>
 
 <p class="hint" id="hint"><b>Tap</b> to wake</p>
@@ -334,7 +308,7 @@ kbd{font:inherit;font-size:10.5px;border:1px solid var(--line);border-bottom-wid
   <section class="card">
     <h2>Rotary encoder</h2>
     <div class="dial">
-      <div class="knob" id="knob" title="Drag round, or scroll"><div class="knob-cap" id="knobCap"><i class="knob-mark"></i></div></div>
+      <div class="knob" id="knob" title="Drag round, or scroll"><div class="knob-cap" id="knobCap"><i class="knob-mark" id="knobMark"></i></div></div>
       <div class="dial-side">
         <div class="dial-target" id="dialTarget"></div>
         <div class="dial-btns">
@@ -343,7 +317,7 @@ kbd{font:inherit;font-size:10.5px;border:1px solid var(--line);border-bottom-wid
         </div>
       </div>
     </div>
-    <p>Stands in for the physical encoder, separate from the touch panel. One step every 8°, clockwise is up.</p>
+    <p>Stands in for the physical encoder, separate from the touch panel. Its pointer follows the end of the arc on screen. Clockwise is up.</p>
   </section>
 
   <section class="card">
@@ -361,25 +335,6 @@ kbd{font:inherit;font-size:10.5px;border:1px solid var(--line);border-bottom-wid
   <section class="card">
     <h2>State</h2>
     <table class="state"><tbody id="state"></tbody></table>
-  </section>
-
-  <section class="card">
-    <h2>Overlays</h2>
-    <div class="toggles">
-      <label><input type="checkbox" id="tBounds"> Design-token boxes (from DESIGN-TOKENS.md)</label>
-      <label><input type="checkbox" id="tZone"> Dial-versus-swipe zone (68% radius)</label>
-    </div>
-    <div class="zoom">Size
-      <button class="btn on" data-z="360">1×</button>
-      <button class="btn" data-z="540">1.5×</button>
-      <button class="btn" data-z="720">2×</button>
-    </div>
-    <p class="coords" id="coords">Point at the screen for 360 × 360 coordinates</p>
-  </section>
-
-  <section class="card">
-    <h2>Event log</h2>
-    <ul class="log" id="log"></ul>
   </section>
 
 </div>
@@ -548,7 +503,6 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     S.track = (i + a.tracks.length) % a.tracks.length;
     elapsed = 0; $("prog").style.width = "0%";
     renderNP(); peekTitle();
-    log("Track "+(S.track+1)+": "+a.tracks[S.track]);
   }
   function enterNP(){ S.track=0; S.playing=false; elapsed=0; clearTimeout(peekT);
     $("nowplaying").classList.remove("peek");
@@ -577,7 +531,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
   setInterval(function(){
     if(!S.playing) return;
     elapsed += 0.1;
-    if(elapsed >= TRACK_LEN){ SRC="Auto"; setTrack(S.track+1); return; }
+    if(elapsed >= TRACK_LEN){ setTrack(S.track+1); return; }
     $("prog").style.width = (elapsed/TRACK_LEN*100).toFixed(1)+"%";
   },100);
 
@@ -586,7 +540,6 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     return {x:e.clientX-r.left-r.width/2, y:e.clientY-r.top-r.height/2, R:r.width/2}; }
 
   dev.addEventListener("pointerdown",function(e){
-    SRC="Touch";
     dev.setPointerCapture(e.pointerId);
     var p=pt(e); startR=Math.sqrt(p.x*p.x+p.y*p.y); lastA=Math.atan2(p.y,p.x);
     st={x:e.clientX,y:e.clientY}; mode=null; acc=0; moved=false;
@@ -600,7 +553,6 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
       var a0=Math.atan2(p.y,p.x), da=a0-lastA;
       while(da>Math.PI) da-=2*Math.PI; while(da<-Math.PI) da+=2*Math.PI;
       mode=(startR>p.R*0.68 && Math.abs(da)*r>Math.abs(r-startR)*1.2 && Math.abs(da)*r>4)?"rotate":"swipe";
-      if(mode==="rotate") SRC="Ring";
     }
     if(mode==="rotate"){
       var a=Math.atan2(p.y,p.x), d=a-lastA;
@@ -658,12 +610,11 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     if(Math.abs(dx)<40&&Math.abs(dy)<40) return;
     swipe(Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up"));
   });
-  dev.addEventListener("wheel",function(e){e.preventDefault();SRC="Wheel";rotate(e.deltaY>0?-1:1);},{passive:false});
+  dev.addEventListener("wheel",function(e){e.preventDefault();rotate(e.deltaY>0?-1:1);},{passive:false});
 
   function rotate(s){
     if(S.view==="nowplaying") vol(s*2);
     else if(S.view==="eqFocus"){ S.eq[S.param]=Math.max(-12,Math.min(12,S.eq[S.param]+s)); renderEq(); }
-    logDial(s);
   }
   function hit(e, sel){
     if(!e) return null;
@@ -674,7 +625,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     if(S.view==="clock"){ show("menu"); renderMenu(); }
     else if(S.view==="menu"){ show("albums"); renderAlbums(); }
     else if(S.view==="albums"){ enterNP(); }
-    else if(S.view==="nowplaying"){ S.playing=!S.playing; renderNP(); peekTitle(); log(S.playing?"Play":"Pause"); }
+    else if(S.view==="nowplaying"){ S.playing=!S.playing; renderNP(); peekTitle(); }
     else if(S.view==="eqOver"){
       var z = hit(e, ".ico.tap");
       if(z) openParam(z.getAttribute("data-p"));
@@ -698,34 +649,17 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     S={view:"clock",menu:2,album:0,track:0,playing:false,volume:60,param:"bass",eq:{treble:0,bass:0,subs:0}};
     elapsed=0; $("prog").style.width="0%"; clearBand();
     renderMenu(); renderAlbums(); renderNP(); show("clock");
-    logEl.innerHTML=""; log("Reset");
   });
 
   /* ================= playground panel =================
      Everything below drives the engine above through its own functions, so
      panel actions behave exactly like the equivalent touch gesture. */
 
-  var SRC = "Touch";
   var NAMES = {clock:"Clock", menu:"Menu", albums:"Album browse",
                nowplaying:"Now Playing", eqOver:"EQ overview", eqFocus:"EQ focus"};
   var FRAMES = {clock:"01", menu:"02", albums:"03", nowplaying:"04 / 05", eqOver:"06", eqFocus:"13–15"};
   var PNAME = {treble:"Treble", bass:"Bass", subs:"Subs"};
 
-  var logEl = $("log");
-  function log(msg){
-    var li = document.createElement("li");
-    li.innerHTML = '<span class="src"></span><span></span>';
-    li.firstChild.textContent = SRC; li.lastChild.textContent = msg;
-    logEl.insertBefore(li, logEl.firstChild);
-    while(logEl.children.length > 30) logEl.removeChild(logEl.lastChild);
-    renderState(); renderBounds();
-  }
-  function logDial(s){
-    var sign = s>0 ? "+1" : "−1";
-    if(S.view==="nowplaying") log("Dial "+sign+" → Volume "+S.volume);
-    else if(S.view==="eqFocus") log("Dial "+sign+" → "+PNAME[S.param]+" "+fmtEq(S.eq[S.param]));
-    else log("Dial "+sign+" → no effect on "+NAMES[S.view]);
-  }
   function fmtEq(v){ return (v>0?"+":v<0?"−":"")+Math.abs(v); }
 
   // screen jumper
@@ -735,7 +669,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     b.className = "btn"; b.setAttribute("data-v", v);
     b.innerHTML = "<span></span><small>"+FRAMES[v]+"</small>";
     b.firstChild.textContent = NAMES[v];
-    b.addEventListener("click", function(){ SRC="Panel"; jump(v); });
+    b.addEventListener("click", function(){ jump(v); });
     flow.appendChild(b);
   });
   function jump(v){
@@ -765,9 +699,9 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
   }
   function panelTap(){ tap(null); }
   [].forEach.call(document.querySelectorAll("[data-sw]"), function(b){
-    b.addEventListener("click", function(){ SRC="Panel"; panelSwipe(b.getAttribute("data-sw")); });
+    b.addEventListener("click", function(){ panelSwipe(b.getAttribute("data-sw")); });
   });
-  $("padTap").addEventListener("click", function(){ SRC="Panel"; panelTap(); });
+  $("padTap").addEventListener("click", function(){ panelTap(); });
 
   // context actions: the taps that need a target on screen
   function renderCtx(){
@@ -775,7 +709,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     function add(label, key, fn){
       var b = document.createElement("button"); b.className = "btn";
       b.innerHTML = "<span></span><kbd>"+key+"</kbd>"; b.firstChild.textContent = label;
-      b.addEventListener("click", function(){ SRC="Panel"; fn(); }); c.appendChild(b);
+      b.addEventListener("click", function(){ fn(); }); c.appendChild(b);
     }
     if(S.view==="eqOver"){
       add("Tap treble","1",function(){openParam("treble");});
@@ -791,8 +725,22 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
   }
 
   // virtual rotary encoder
-  var knob = $("knob"), cap = $("knobCap"), kAng = 0, kLast = null, kAcc = 0;
-  function dial(s){ SRC="Encoder"; rotate(s); kAng += s*8; cap.style.transform = "rotate("+kAng+"deg)"; }
+  // The pointer is drawn from the value, not from how far the knob has turned,
+  // so it always sits where the arc on screen ends (6 o'clock = 0, clockwise).
+  // Dragging takes one step per step's worth of arc, so finger, pointer and
+  // arc move together: 7.2° per volume step (50 steps), 15° per EQ step (24).
+  var knob = $("knob"), cap = $("knobCap"), kLast = null, kAcc = 0, kAng = null;
+  function knobTarget(){
+    if(S.view==="eqFocus") return {f:(S.eq[S.param]+12)/24, step:15, col:COL[S.param]};
+    return {f:S.volume/100, step:7.2, col:"#ECD613"};
+  }
+  function syncKnob(){
+    var t = knobTarget(), a = 180 + t.f*360;
+    if(kAng!==null) a += Math.round((kAng-a)/360)*360;   // keep turning the short way
+    if(a!==kAng){ kAng = a; cap.style.transform = "rotate("+a+"deg)"; }
+    $("knobMark").style.background = t.col;
+  }
+  function dial(s){ rotate(s); renderState(); }
   function knobA(e){ var r = knob.getBoundingClientRect();
     return Math.atan2(e.clientY-r.top-r.height/2, e.clientX-r.left-r.width/2)*180/Math.PI; }
   knob.addEventListener("pointerdown", function(e){ knob.setPointerCapture(e.pointerId); kLast = knobA(e); kAcc = 0; });
@@ -801,7 +749,8 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     var a = knobA(e), d = a-kLast;
     while(d>180) d-=360; while(d<-180) d+=360;
     kLast = a; kAcc += d;
-    while(Math.abs(kAcc)>=8){ var s = kAcc>0?1:-1; kAcc -= s*8; dial(s); }
+    var st = knobTarget().step;
+    while(Math.abs(kAcc)>=st){ var s = kAcc>0?1:-1; kAcc -= s*st; dial(s); }
   });
   ["pointerup","pointercancel"].forEach(function(t){ knob.addEventListener(t, function(){ kLast = null; }); });
   knob.addEventListener("wheel", function(e){ e.preventDefault(); dial(e.deltaY>0?-1:1); }, {passive:false});
@@ -814,8 +763,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
     if(e.metaKey||e.ctrlKey||e.altKey) return;
     var k = e.key, handled = true;
-    SRC = "Key";
-    if(k==="ArrowUp") panelSwipe("up");
+        if(k==="ArrowUp") panelSwipe("up");
     else if(k==="ArrowDown") panelSwipe("down");
     else if(k==="ArrowLeft") panelSwipe("left");
     else if(k==="ArrowRight") panelSwipe("right");
@@ -849,62 +797,13 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
             : S.view==="eqFocus" ? "Turning adjusts <b style=\"color:"+COL[S.param]+"\">"+PNAME[S.param]+"</b> (−12 to +12, 1 per step)"
             : "Turning does nothing on <b>"+NAMES[S.view]+"</b>";
     if(t.innerHTML !== tgt) t.innerHTML = tgt;
+    syncKnob();
   }
   setInterval(renderState, 100);
 
-  // design-token boxes, per screen, straight from docs/DESIGN-TOKENS.md
-  var BOX = {
-    menu:[["Highlight pill",54,151,251,58],["Text block",121,29,125,300]],
-    albums:[["Album band",-2,267.7,364,52],["Usable text 220",70,267.7,220,52,1]],
-    paused:[["Play disc",126,107.3,120,120],["Triangle",178,142,30,46.9],
-            ["Title band",-2,267.7,364,52],["Usable text 220",70,267.7,220,52,1]],
-    playing:[["Transport band",33,138,294,85],["Prev",68.9,159.6,39.1,33.8],["Pause",160.4,151,39.1,50.8],
-             ["Next",252,159.6,39.1,33.8],["Progress",69,213.8,222.1,3.4],["Title band (peek)",-2,267.7,364,52]],
-    eqOver:[["Trident",71,48,219,196.9],["Treble",77.5,80,50,100],["Bass",225,92,72,77],["Subs",136,233.3,75,66.7]],
-    treble:[["Treble icon",154,64,50,100]], bass:[["Bass icon",152,80,72,77]], subs:[["Subs icon",142,85,75,66.7]],
-    back:[["Back button",88,206,184,85]]
-  };
-  var RINGS = '<svg viewBox="0 0 360 360" fill="none" stroke="var(--ovl)" stroke-width=".6" stroke-dasharray="3 3">'+
-    '<circle cx="180" cy="180" r="168"/><circle cx="180" cy="180" r="170"/><circle cx="180" cy="180" r="178"/></svg>';
-  var boxKey = "";
-  function renderBounds(){
-    var list = S.view==="nowplaying" ? BOX[S.playing?"playing":"paused"]
-             : S.view==="eqFocus" ? BOX[S.param].concat(BOX.back)
-             : BOX[S.view] || [];
-    var key = S.view+S.playing+S.param;
-    if(key===boxKey) return; boxKey = key;
-    var html = (S.view==="clock"||S.view==="menu") ? "" : RINGS;
-    list.forEach(function(b){
-      html += '<b'+(b[5]?' class="lo"':'')+' style="left:'+b[1]+'px;top:'+b[2]+'px;width:'+b[3]+'px;height:'+b[4]+'px"><span>'+
-              b[0]+' '+b[1]+','+b[2]+' '+b[3]+'×'+b[4]+'</span></b>';
-    });
-    $("ovlBounds").innerHTML = html;
-  }
-  setInterval(renderBounds, 150);
-  $("tBounds").addEventListener("change", function(e){ dev.classList.toggle("show-bounds", e.target.checked); });
-  $("tZone").addEventListener("change", function(e){ dev.classList.toggle("show-zone", e.target.checked); });
-
-  // size
-  [].forEach.call(document.querySelectorAll("[data-z]"), function(b){
-    b.addEventListener("click", function(){
-      document.documentElement.style.setProperty("--dev", b.getAttribute("data-z")+"px");
-      [].forEach.call(document.querySelectorAll("[data-z]"), function(o){ o.classList.toggle("on", o===b); });
-      K = fit();
-    });
-  });
-
-  // pointer coordinates in design space
-  dev.addEventListener("pointermove", function(e){
-    var r = dev.getBoundingClientRect(), x = (e.clientX-r.left)/K, y = (e.clientY-r.top)/K;
-    var d = Math.sqrt((x-180)*(x-180)+(y-180)*(y-180));
-    $("coords").textContent = "x "+x.toFixed(1)+"  y "+y.toFixed(1)+"  ·  "+(d/180*100).toFixed(0)+"% of radius";
-  });
-  dev.addEventListener("pointerleave", function(){ $("coords").textContent = "Point at the screen for 360 × 360 coordinates"; });
-
   function onView(was){
     [].forEach.call(flow.children, function(b){ b.classList.toggle("on", b.getAttribute("data-v")===S.view); });
-    renderCtx();
-    if(was!==S.view && logEl) log("→ "+NAMES[S.view]+(S.view==="eqFocus"?" ("+PNAME[S.param]+")":""));
+    renderCtx(); renderState();
   }
 
   K=fit(); renderMenu(); renderAlbums(); renderNP(); show("clock");

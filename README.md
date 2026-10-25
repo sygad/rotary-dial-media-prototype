@@ -34,11 +34,9 @@ help you explore it.
 | Panel | What it does |
 |---|---|
 | **Screen** | Jump straight to any of the six screens. Each one shows its Figma frame number. |
-| **Rotary encoder** | A virtual knob that stands in for the physical encoder, which is a separate input from the touch panel. Drag it round, scroll on it, or press `[` / `]`. |
+| **Rotary encoder** | A virtual knob that stands in for the physical encoder, which is a separate input from the touch panel. Its pointer always sits where the arc on screen ends, in the arc's colour. Drag it round, scroll on it, or press `[` / `]`. |
 | **Touch gestures** | Swipe and tap buttons, plus the on-screen taps (EQ zones, back button). |
 | **State** | Live readout of the screen, album, track, playback, volume and EQ. |
-| **Overlays** | Draws every box from `docs/DESIGN-TOKENS.md` on the current screen, or shows the zone that decides dial versus swipe. Also offers 1× / 1.5× / 2× size and pointer coordinates in the 360 × 360 space. |
-| **Event log** | Each input and what it caused, e.g. `Encoder · Dial +1 → Volume 62`. |
 
 ### Controls
 
@@ -54,7 +52,7 @@ help you explore it.
 
 This is the file exactly as it came out of the design sessions: a single file with the
 album art embedded. **It's the behavioural authority.** The playground copies its engine
-and only adds things alongside it (the panel, the overlays, and loading the art from
+and only adds things alongside it (the panel, and loading the art from
 `assets/art/`). If the two ever disagree, the prototype wins.
 
 ## The screens
