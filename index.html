@@ -359,7 +359,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     clock:"<b>Tap</b> to wake",
     menu:"<b>Drag up / down</b> &middot; <b>tap</b> to choose",
     albums:"<b>Drag left / right</b> between albums &middot; <b>tap</b> to open",
-    nowplaying:"<b>Tap</b> play / pause &middot; <b>tap &#9664;&#9664; / &#9654;&#9654;</b> skip 5s &middot; <b>drag L/R</b> change track &middot; <b>turn the ring</b> for volume &middot; <b>drag up</b> for EQ",
+    nowplaying:"<b>Tap</b> play &middot; <b>&#10074;&#10074;</b> pause &middot; <b>&#9664;&#9664; / &#9654;&#9654;</b> skip 5s &middot; <b>drag L/R</b> change track &middot; <b>turn the ring</b> for volume &middot; <b>drag up</b> for EQ",
     eqOver:"<b>Tap</b> a zone &middot; <b>drag down</b> to return",
     eqFocus:"<b>Turn the ring</b> to adjust &middot; <b>back</b> for all three &middot; <b>drag down</b> to exit"
   };
@@ -533,6 +533,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     chip("Volume "+S.volume);
     renderNP();
   }
+  function togglePlay(){ S.playing=!S.playing; renderNP(); peekTitle(); }
   // skip within the track; past the end moves to the next track, back stops at 0
   function skip(d){
     chip((d>0?"+":"\u2212")+Math.abs(d)+"s");
@@ -646,10 +647,11 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     else if(S.view==="menu"){ show("albums"); renderAlbums(); }
     else if(S.view==="albums"){ enterNP(); }
     else if(S.view==="nowplaying"){
-      var z = bandZone(e);
+      if(!S.playing){ togglePlay(); return; }   // paused: tap anywhere plays
+      var z = bandZone(e);                      // playing: only the transport band responds
       if(z==="back") skip(-5);
       else if(z==="fwd") skip(5);
-      else { S.playing=!S.playing; renderNP(); peekTitle(); }
+      else if(z==="pause") togglePlay();
     }
     else if(S.view==="eqOver"){
       var z = hit(e, ".ico.tap");
@@ -745,7 +747,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
       add("Tap back","Esc",function(){show("eqOver");});
     } else if(S.view==="nowplaying" && S.playing){
       add("Tap \u22125s",",",function(){skip(-5);});
-      add("Tap pause","\u2423",function(){tap(null);});
+      add("Tap pause","\u2423",togglePlay);
       add("Tap +5s",".",function(){skip(5);});
     } else if(S.view==="menu"){
       var p = document.createElement("p"); p.style.margin = "0";
@@ -797,7 +799,8 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     else if(k==="ArrowDown") panelSwipe("down");
     else if(k==="ArrowLeft") panelSwipe("left");
     else if(k==="ArrowRight") panelSwipe("right");
-    else if(k===" "||k==="Enter"){ if(e.target && e.target.tagName==="BUTTON") return; panelTap(); }
+    else if(k===" "||k==="Enter"){ if(e.target && e.target.tagName==="BUTTON") return;
+      if(S.view==="nowplaying" && S.playing) togglePlay(); else panelTap(); }   // Space = pause button while playing
     else if(k==="]"||k==="="||k==="+"||e.code==="BracketRight"||e.code==="Equal") dial(1);
     else if(k==="["||k==="-"||e.code==="BracketLeft"||e.code==="Minus") dial(-1);
     else if(S.view==="eqOver" && (k==="1"||k==="2"||k==="3")) openParam(["treble","bass","subs"][+k-1]);

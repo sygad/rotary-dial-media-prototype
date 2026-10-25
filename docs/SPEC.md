@@ -59,11 +59,11 @@ There is no "pause disc" state.
 
 Interactions:
 
-- **Tap** toggles play / pause.
+- **Tap** anywhere while paused starts playback.
 - **While playing, the transport bar splits into thirds.** The left third (previous
   icon) skips back 5 seconds, the middle (pause icon) pauses, and the right third
-  (next icon) skips forward 5 seconds. Tapping anywhere else on screen still toggles
-  play / pause. A skip shows **+5s** or **−5s** in the same label as volume. Skipping
+  (next icon) skips forward 5 seconds. The pause icon is the only way to pause; taps
+  anywhere outside the transport bar do nothing while playing. A skip shows **+5s** or **−5s** in the same label as volume. Skipping
   forward past the end moves to the next track; skipping back stops at the start.
 - **Drag left / right** changes track. The album art slides a full screen width,
   following the finger, exactly as album browsing does.

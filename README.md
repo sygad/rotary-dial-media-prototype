@@ -68,7 +68,7 @@ Clock ─tap─▶ Menu ─tap─▶ Album browse ─tap─▶ Now Playing ─sw
 | 01 | Clock | Tap to wake |
 | 02 | Menu | Drag the list behind a fixed highlight; tap to choose |
 | 03 | Album browse | Swipe left / right between albums; tap to open |
-| 04 / 05 | Now Playing | Tap to play or pause; ◀◀ / ▶▶ skip 5s; swipe left / right to change track; the dial sets volume |
+| 04 / 05 | Now Playing | Tap to play; while playing, ❚❚ pauses and ◀◀ / ▶▶ skip 5s; swipe left / right to change track; the dial sets volume |
 | 06 | EQ overview | Tap treble, bass or subs |
 | 13–15 | EQ focus | The dial adjusts the chosen parameter; back returns to the overview |
 
