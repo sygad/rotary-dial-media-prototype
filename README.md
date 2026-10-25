@@ -10,7 +10,9 @@ depend on this repo.
 
 ## Play with it
 
-Open **`index.html`** in a browser. There's no build step and nothing to install.
+**Live demo: <https://sygad.github.io/rotary-dial-media-prototype/>**
+
+Or open **`index.html`** locally in a browser. There's no build step and nothing to install.
 
 ```bash
 open index.html
@@ -100,6 +102,6 @@ truth for anything visual. Re-export values rather than adjusting them by eye.
 
 ## Album art
 
-The five covers are real artwork. They're here to test the interface against real titles
-of different lengths. **They're not licensed for distribution**, which is why this repo is
-private. Replace them before anything here goes public.
+The five covers are real album artwork, used only to show the interface with real titles
+of different lengths. All rights belong to the artists and labels. This is a non-commercial
+design demo.

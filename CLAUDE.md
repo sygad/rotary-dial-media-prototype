@@ -49,7 +49,7 @@ How browser gestures map to hardware:
 ```
 index.html                playground — prototype engine plus exploration panel
 prototype/index.html      reference implementation — the behavioural authority
-assets/art/               album art for the playground (not licensed — see README)
+assets/art/               album art for the playground (see README)
 docs/SPEC.md              screen-by-screen flow and interaction rules
 docs/DESIGN-TOKENS.md     exact coordinates, colours, type, from Figma
 docs/TIMINGS.md           every animation duration in one table
