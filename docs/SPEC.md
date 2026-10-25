@@ -70,8 +70,8 @@ from zero, and resets on every track change. At the end it advances to the next 
 and continues.
 
 **Title peek:** while playing, any track change — swiped or automatic — fades the title
-band in, holds, then fades it out. If the title scrolls, the hold lasts at least one
-complete scroll pass.
+band in, holds, then fades it out. If the title scrolls, the hold lasts one complete
+scroll pass, up to a maximum of 6 seconds.
 
 ## 5. EQ overview
 

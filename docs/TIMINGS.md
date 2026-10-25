@@ -7,7 +7,7 @@ Every duration in the prototype, in one place.
 | Title fade in | 250ms |
 | Title fade out | 500ms |
 | Title crossfade on track change | 250ms |
-| Title hold before fading | max(2000ms, one full scroll cycle) |
+| Title hold before fading | max(2000ms, one full scroll cycle), capped at 6000ms |
 | Text scroll cycle | 2600ms + 55ms per hidden pixel |
 | Text scroll easing | ease-in-out |
 | Album / track art slide | 280ms, cubic-bezier(.2, .9, .3, 1) |

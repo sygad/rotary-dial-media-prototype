@@ -379,8 +379,9 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     if(!S.playing){ np.classList.remove("peek"); return; }
     np.classList.add("peek");
     clearTimeout(peekT);
-    // a scrolling title must complete a full pass before it starts to fade
-    var hold = Math.max(2000, lastCycle);
+    // a scrolling title gets one full pass before it fades, capped at 6s so a
+    // long title can't outlast the track and keep the band up indefinitely
+    var hold = Math.min(6000, Math.max(2000, lastCycle));
     peekT = setTimeout(function(){ np.classList.remove("peek"); }, hold);
   }
   function setTrack(i){
