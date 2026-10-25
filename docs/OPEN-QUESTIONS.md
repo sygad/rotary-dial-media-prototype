@@ -10,7 +10,7 @@ design assumes both swipe gestures and dial rotation. If there is no touch, ever
 needs an encoder equivalent and the interaction model changes substantially.
 
 **Q3 — Audio.** Source (local storage, Bluetooth, network), decoder and output stage are
-all unspecified. The prototype fakes playback with a 10-second timer.
+all unspecified. The prototype fakes playback with a 20-second timer.
 
 **Q4 — Unbuilt menu branches.** Search, Playlist, Artists and Radio appear in the menu
 but have no designed screens. Only Albums exists.

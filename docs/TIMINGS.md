@@ -14,9 +14,10 @@ Every duration in the prototype, in one place.
 | Menu snap on release | 220ms, cubic-bezier(.2, .85, .35, 1) |
 | Menu magnetic pull (during drag) | 0.34 x (1 - t^2), t = distance from nearest slot / 30px |
 | Transport bar fade | 220ms |
-| Volume label hold | 1100ms |
+| Volume / skip label hold | 1100ms |
 | Arc value change | 100ms linear |
-| Track length (prototype) | 10s |
+| Track length (prototype) | 20s |
+| Skip back / forward | 5s |
 
 ## Gesture thresholds
 

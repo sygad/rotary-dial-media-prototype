@@ -359,7 +359,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     clock:"<b>Tap</b> to wake",
     menu:"<b>Drag up / down</b> &middot; <b>tap</b> to choose",
     albums:"<b>Drag left / right</b> between albums &middot; <b>tap</b> to open",
-    nowplaying:"<b>Tap</b> play &middot; <b>drag L/R</b> change track &middot; <b>turn the ring</b> for volume &middot; <b>drag up</b> for EQ",
+    nowplaying:"<b>Tap</b> play / pause &middot; <b>tap &#9664;&#9664; / &#9654;&#9654;</b> skip 5s &middot; <b>drag L/R</b> change track &middot; <b>turn the ring</b> for volume &middot; <b>drag up</b> for EQ",
     eqOver:"<b>Tap</b> a zone &middot; <b>drag down</b> to return",
     eqFocus:"<b>Turn the ring</b> to adjust &middot; <b>back</b> for all three &middot; <b>drag down</b> to exit"
   };
@@ -479,7 +479,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
   }
   function stripPos(){ $("npStrip").style.transform = "translateX("+(-S.track*360)+"px)"; }
 
-  var elapsed = 0, TRACK_LEN = 10;      // seconds per track, for the prototype
+  var elapsed = 0, TRACK_LEN = 20;      // seconds per track, for the prototype
   function clearBand(){ $("npBand").classList.remove("show");
     $("npDisc").style.opacity="1"; $("npTri").style.opacity="1"; }
   function transport(){
@@ -523,11 +523,30 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
       $(id).setAttribute("stroke-dasharray",C); $(id).setAttribute("stroke-dashoffset",off); });
   }
   var ct;
+  // the label at the top is shared: volume changes and skips both use it
+  function chip(text){
+    $("chip").textContent=text; $("chip").classList.add("show");
+    clearTimeout(ct); ct=setTimeout(function(){$("chip").classList.remove("show");},1100);
+  }
   function vol(d){
     S.volume=Math.max(0,Math.min(100,S.volume+d));
-    $("chip").textContent="Volume "+S.volume; $("chip").classList.add("show");
-    clearTimeout(ct); ct=setTimeout(function(){$("chip").classList.remove("show");},1100);
+    chip("Volume "+S.volume);
     renderNP();
+  }
+  // skip within the track; past the end moves to the next track, back stops at 0
+  function skip(d){
+    chip((d>0?"+":"\u2212")+Math.abs(d)+"s");
+    elapsed=Math.max(0,elapsed+d);
+    if(elapsed>=TRACK_LEN){ setTrack(S.track+1); return; }
+    $("prog").style.width=(elapsed/TRACK_LEN*100).toFixed(1)+"%";
+  }
+  // while playing, the transport band (33,138 294x85) splits into thirds:
+  // previous icon = back 5s, pause icon = pause, next icon = forward 5s
+  function bandZone(e){
+    if(!e || !S.playing) return null;
+    var r=dev.getBoundingClientRect(), x=(e.clientX-r.left)/K, y=(e.clientY-r.top)/K;
+    if(x<33||x>327||y<138||y>223) return null;
+    return x<131 ? "back" : x>229 ? "fwd" : "pause";
   }
   setInterval(function(){
     if(!S.playing) return;
@@ -626,7 +645,12 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     if(S.view==="clock"){ show("menu"); renderMenu(); }
     else if(S.view==="menu"){ show("albums"); renderAlbums(); }
     else if(S.view==="albums"){ enterNP(); }
-    else if(S.view==="nowplaying"){ S.playing=!S.playing; renderNP(); peekTitle(); }
+    else if(S.view==="nowplaying"){
+      var z = bandZone(e);
+      if(z==="back") skip(-5);
+      else if(z==="fwd") skip(5);
+      else { S.playing=!S.playing; renderNP(); peekTitle(); }
+    }
     else if(S.view==="eqOver"){
       var z = hit(e, ".ico.tap");
       if(z) openParam(z.getAttribute("data-p"));
@@ -705,6 +729,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
   $("padTap").addEventListener("click", function(){ panelTap(); });
 
   // context actions: the taps that need a target on screen
+  var ctxKey = "";
   function renderCtx(){
     var c = $("ctx"); c.innerHTML = "";
     function add(label, key, fn){
@@ -718,6 +743,10 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
       add("Tap subs","3",function(){openParam("subs");});
     } else if(S.view==="eqFocus"){
       add("Tap back","Esc",function(){show("eqOver");});
+    } else if(S.view==="nowplaying" && S.playing){
+      add("Tap \u22125s",",",function(){skip(-5);});
+      add("Tap pause","\u2423",function(){tap(null);});
+      add("Tap +5s",".",function(){skip(5);});
     } else if(S.view==="menu"){
       var p = document.createElement("p"); p.style.margin = "0";
       p.textContent = "Every item opens Album browse — only Albums is designed (Q4).";
@@ -773,6 +802,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
     else if(k==="["||k==="-"||e.code==="BracketLeft"||e.code==="Minus") dial(-1);
     else if(S.view==="eqOver" && (k==="1"||k==="2"||k==="3")) openParam(["treble","bass","subs"][+k-1]);
     else if(S.view==="eqFocus" && (k==="Escape"||k==="Backspace")) show("eqOver");
+    else if(S.view==="nowplaying" && S.playing && (k===","||k===".")) skip(k==="."?5:-5);
     else handled = false;
     if(handled) e.preventDefault();
   });
@@ -798,6 +828,7 @@ var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": [
             : S.view==="eqFocus" ? "Turning adjusts <b style=\"color:"+COL[S.param]+"\">"+PNAME[S.param]+"</b> (−12 to +12, 1 per step)"
             : "Turning does nothing on <b>"+NAMES[S.view]+"</b>";
     if(t.innerHTML !== tgt) t.innerHTML = tgt;
+    if(S.view+S.playing !== ctxKey){ ctxKey = S.view+S.playing; renderCtx(); }
     syncKnob();
   }
   setInterval(renderState, 100);

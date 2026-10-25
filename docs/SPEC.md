@@ -60,12 +60,17 @@ There is no "pause disc" state.
 Interactions:
 
 - **Tap** toggles play / pause.
+- **While playing, the transport bar splits into thirds.** The left third (previous
+  icon) skips back 5 seconds, the middle (pause icon) pauses, and the right third
+  (next icon) skips forward 5 seconds. Tapping anywhere else on screen still toggles
+  play / pause. A skip shows **+5s** or **−5s** in the same label as volume. Skipping
+  forward past the end moves to the next track; skipping back stops at the start.
 - **Drag left / right** changes track. The album art slides a full screen width,
   following the finger, exactly as album browsing does.
 - **Rotate the dial** adjusts volume, shown on the arc plus a temporary label.
 - **Drag up** opens EQ overview. **Drag down** returns to Album browse.
 
-Playback (prototype values): each track runs **10 seconds**, the progress bar animates
+Playback (prototype values): each track runs **20 seconds**, the progress bar animates
 from zero, and resets on every track change. At the end it advances to the next track
 and continues.
 
