@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rotary Dial Playground</title>
+<!--
+  Playground wrapper around prototype/index.html.
+
+  The device engine below is a copy of the reference prototype. The only changes
+  are additive: album art loads from assets/art/ instead of data URIs, and a few
+  hooks report state to the side panel. prototype/index.html remains the
+  behavioural authority — if the two ever disagree, the prototype wins.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --page-bg:#ecebe7; --page-fg:#1b1b1b; --page-muted:#6b6b6b;
+  --card:#f7f6f3; --line:#d6d4ce; --accent:#3c8194; --accent-fg:#fff; --ovl:#008fa8;
+  --bezel:#0b0b0b; --bezel-edge:#343434;
+  --teal:#3c8194; --magenta:#9C0D90; --pink:#AB1049; --yellow:#ECD613;
+  --ico-teal:#32ACA4;
+  box-sizing:border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page-bg:#131313; --page-fg:#f1f1f1; --page-muted:#9b9b9b; --bezel-edge:#4a4a4a;
+    --card:#1c1c1c; --line:#333; --accent:#4a9db3; --ovl:#3fe0ff;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page-bg:#131313; --page-fg:#f1f1f1; --page-muted:#9b9b9b; --bezel-edge:#4a4a4a;
+  --card:#1c1c1c; --line:#333; --accent:#4a9db3; --ovl:#3fe0ff;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;padding:0}
+body{
+  background:var(--page-bg); color:var(--page-fg);
+  font-family:"Inter","Helvetica Neue",system-ui,-apple-system,sans-serif;
+  min-height:100vh; padding:26px 16px 34px;
+}
+h1{font-size:15px;font-weight:600;margin:0;text-align:center}
+.sub{font-size:12.5px;color:var(--page-muted);margin:0;text-align:center;max-width:36ch;line-height:1.5}
+
+/* ---------- playground layout ---------- */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;
+  max-width:1060px;margin:0 auto;align-items:start}
+.col-device{display:flex;flex-direction:column;align-items:center;gap:20px;
+  position:sticky;top:26px}
+.col-panel{display:flex;flex-direction:column;gap:12px}
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .col-device{position:static}
+}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.card h2{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--page-muted);margin:0 0 10px}
+.card p{font-size:12px;color:var(--page-muted);margin:8px 0 0;line-height:1.5}
+.btn{background:transparent;border:1px solid var(--line);color:var(--page-fg);
+  font:inherit;font-size:12px;padding:6px 10px;border-radius:8px;cursor:pointer;line-height:1.2}
+.btn:hover{border-color:var(--page-muted)}
+.btn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn:disabled{opacity:.35;cursor:default}
+kbd{font:inherit;font-size:10.5px;border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:4px;padding:0 4px;color:var(--page-muted);margin-left:4px}
+
+.flow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.flow .btn{text-align:left;display:flex;justify-content:space-between;align-items:center}
+.flow .btn small{font-size:10px;opacity:.7}
+
+.dial{display:flex;align-items:center;gap:16px}
+.knob{width:104px;height:104px;border-radius:50%;flex:none;cursor:grab;touch-action:none;
+  background:radial-gradient(circle at 35% 30%,#5a5a5a,#1d1d1d 70%);
+  box-shadow:0 6px 16px rgba(0,0,0,.35), inset 0 0 0 3px #2a2a2a;position:relative}
+.knob:active{cursor:grabbing}
+.knob-cap{position:absolute;inset:0;border-radius:50%;
+  background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.07) 0 4deg,transparent 4deg 8deg)}
+.knob-mark{position:absolute;left:50%;top:8px;width:4px;height:18px;margin-left:-2px;
+  border-radius:2px;background:var(--yellow)}
+.dial-side{display:flex;flex-direction:column;gap:8px;flex:1;min-width:0}
+.dial-btns{display:flex;gap:6px}
+.dial-target{font-size:12px;line-height:1.4}
+.dial-target b{font-weight:600}
+
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pad .btn{padding:8px 0}
+.ctx{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;min-height:30px}
+
+.state{width:100%;border-collapse:collapse;font-size:12px}
+.state td{padding:3px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.state tr:last-child td{border-bottom:0}
+.state td:first-child{color:var(--page-muted);width:38%}
+.state td:last-child{font-variant-numeric:tabular-nums}
+.meter{display:inline-block;width:70px;height:4px;border-radius:2px;background:var(--line);
+  vertical-align:middle;margin-right:6px;overflow:hidden}
+.meter i{display:block;height:100%}
+
+.toggles{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.toggles label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.zoom{display:flex;gap:6px;margin-top:10px;align-items:center;font-size:12px;color:var(--page-muted)}
+
+.log{list-style:none;margin:0;padding:0;font-size:11.5px;line-height:1.5;max-height:168px;overflow:auto}
+.log li{display:flex;gap:8px;border-bottom:1px solid var(--line);padding:2px 0}
+.log li:last-child{border-bottom:0}
+.log .src{flex:none;width:58px;color:var(--page-muted)}
+.coords{font-size:11.5px;color:var(--page-muted);font-variant-numeric:tabular-nums;min-height:1.4em}
+.links{font-size:12px;text-align:center;color:var(--page-muted)}
+.links a{color:inherit}
+
+/* ---------- design overlay (inside the 360 stage) ---------- */
+.ovl{position:absolute;inset:0;z-index:200;pointer-events:none;display:none}
+.show-bounds .ovl.bounds,.show-zone .ovl.zone{display:block}
+.ovl b{position:absolute;outline:1px dashed var(--ovl);font-weight:400}
+.ovl b span{position:absolute;left:0;top:-11px;font-size:8px;line-height:10px;white-space:nowrap;
+  color:#000;background:var(--ovl);padding:0 2px}
+.ovl b.lo span{top:auto;bottom:-11px}
+.ovl svg{position:absolute;inset:0;width:360px;height:360px}
+
+/* ---------- device engine (verbatim from prototype/index.html) ---------- */
+.device{position:relative;width:min(var(--dev,360px),86vw,100%);aspect-ratio:1;border-radius:50%;
+  background:#000;box-shadow:0 14px 38px rgba(0,0,0,.35);
+  touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
+.stage{position:absolute;top:0;left:0;width:360px;height:360px;transform-origin:top left}
+
+.view{position:absolute;top:0;left:0;width:360px;height:360px;display:none;overflow:hidden;border-radius:50%}
+.view.active{display:block}
+.art{position:absolute;inset:0;background-size:cover;background-position:center}
+.np-strip{position:absolute;top:0;left:0;width:360px;height:360px}
+.np-strip.snap{transition:transform .28s cubic-bezier(.2,.9,.3,1)}
+.np-slide{position:absolute;top:0;left:0;width:360px;height:360px;
+  background-size:cover;background-position:center}
+.scrim{position:absolute;inset:0;background:transparent}
+.scrim.eq{background:rgba(0,0,0,.75)}
+
+.ring{position:absolute;top:0;left:0;width:360px;height:360px;pointer-events:none;z-index:90}
+.ring circle{fill:none;stroke-linecap:round;transform:rotate(90deg);transform-origin:50% 50%}
+/* Black ring visible 168 -> 180 (12px); drawn out to 184 so the clip edge is
+   black. The 8px arc sits centred inside it at 170 -> 178, leaving 2px of
+   black either side rather than two edges landing on the same pixel. */
+.ring .band{stroke:#000;stroke-width:16;stroke-linecap:butt}
+.ring .val{stroke-width:8;transition:stroke-dashoffset .1s linear}
+
+#clock{background:#000}
+.time{position:absolute;left:0;right:0;top:122px;height:116px;text-align:center;
+  font-size:96px;font-weight:200;line-height:116px;color:#fff;font-variant-numeric:tabular-nums}
+
+#menu{background:#000}
+.menu-pill{position:absolute;left:54px;top:151px;width:251px;height:58px;border-radius:29px;
+  background:var(--teal);z-index:1}
+.menu-list{position:absolute;left:0;right:0;top:0;text-align:center;z-index:2}
+.menu-list.snap{transition:transform .22s cubic-bezier(.2,.85,.35,1)}
+.menu-item{height:60px;line-height:60px;font-size:36px;font-weight:300;color:#808080;transition:color .18s}
+.menu-item.sel{color:#fff}
+
+.album-track{position:absolute;top:0;left:0;width:360px;height:360px}
+.album-track.snap{transition:transform .26s cubic-bezier(.2,.9,.3,1)}
+.album-slide{position:absolute;top:0;left:0;width:360px;height:360px;overflow:hidden}
+.album-label{position:absolute;left:-2px;top:267.7px;width:364px;height:52px;
+  background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:24px;z-index:8;overflow:hidden}
+.album-label.mq{justify-content:flex-start;padding-left:70px}
+.label-inner{white-space:nowrap}
+
+.np-disc{position:absolute;left:126px;top:107.3px;width:120px;height:120px;border-radius:60px;
+  background:rgba(0,0,0,.8);transition:opacity .28s;z-index:5}
+.np-tri{position:absolute;left:178px;top:142px;width:30px;height:46.9px;z-index:6;
+  transition:opacity .28s}
+.np-band{position:absolute;left:33px;top:138px;width:294px;height:85px;border-radius:42.5px;
+  background:rgba(0,0,0,.8);opacity:0;pointer-events:none;transition:opacity .22s;z-index:6}
+.np-band.show{opacity:1}
+.np-ctl{position:absolute;z-index:7;opacity:0;pointer-events:none;transition:opacity .22s}
+.np-band.show ~ .np-ctl{opacity:1}
+.np-prev{left:68.9px;top:159.6px;width:39.1px;height:33.8px}
+.np-next{left:252px;top:159.6px;width:39.1px;height:33.8px}
+.np-pause{left:160.4px;top:151px;width:39.1px;height:50.8px}
+.np-bar{position:absolute;left:69px;top:213.8px;width:222.1px;height:3.4px;
+  background:#d9d9d9;border-radius:1.7px;overflow:hidden;z-index:7;
+  opacity:0;pointer-events:none;transition:opacity .22s}
+.np-band.show ~ .np-bar{opacity:1}
+.np-bar i{display:block;height:100%;width:0%;background:#FF00FB;border-radius:1.7px}
+.title-band{position:absolute;left:-2px;top:267.7px;width:364px;height:52px;
+  background:rgba(0,0,0,.8);overflow:hidden;z-index:8;transition:opacity .22s}
+.playing .title-band{opacity:0;pointer-events:none;transition:opacity 500ms}
+.playing.peek .title-band{opacity:1;transition:opacity 250ms}
+.title-inner{position:absolute;left:0;top:0;width:100%;height:52px;line-height:52px;
+  white-space:nowrap;color:#fff;font-size:24px;font-weight:400;text-align:center;padding:0}
+.title-inner.marquee{text-align:left;padding-left:70px}
+.title-measure{position:absolute;left:-9999px;top:0;white-space:nowrap;
+  font-size:24px;font-weight:400;visibility:hidden}
+
+/* EQ — exported Figma vectors at exported coordinates */
+.ico{position:absolute;z-index:10;line-height:0}
+.ico.tap{cursor:pointer}
+.ico.tap::after{content:"";position:absolute;inset:-26px}
+.trident{position:absolute;left:71px;top:48px;width:219px;height:196.9px;z-index:4;pointer-events:none}
+/* overview placement */
+#eqOver .i-treble{left:77.5px;top:80px;width:50px;height:100px}
+#eqOver .i-bass{left:225px;top:92px;width:72px;height:77px}
+#eqOver .i-subs{left:136px;top:233.3px;width:75px;height:66.7px}
+/* focus placement */
+#eqFocus .i-treble{left:154px;top:64px;width:50px;height:100px}
+#eqFocus .i-bass{left:152px;top:80px;width:72px;height:77px}
+#eqFocus .i-subs{left:142px;top:85px;width:75px;height:66.7px}
+#eqFocus .ico{display:none}
+#eqFocus .ico.on{display:block}
+.ico svg{display:block;width:100%;height:100%}
+
+.back-btn{position:absolute;left:88px;top:206px;width:184px;height:85px;z-index:40;cursor:pointer}
+.back-btn svg{display:block;width:100%;height:100%}
+
+/* optical centring: 10px below the mathematical midpoint of 39.65 */
+/* centred by auto margins, not translateX(-50%): a fractional element width
+   makes the percentage shift land on a half pixel and bias left once scaled */
+.chip{position:absolute;left:0;right:0;margin:0 auto;width:max-content;top:49.65px;
+  height:28px;line-height:28px;padding:0 14px;background:rgba(0,0,0,.82);color:#fff;
+  font-size:14px;text-align:center;border-radius:14px;opacity:0;
+  transition:opacity .2s;z-index:95}
+.chip.show{opacity:1}
+
+.hint{font-size:12px;color:var(--page-muted);text-align:center;line-height:1.6;max-width:42ch;min-height:3.2em;margin:0}
+.hint b{color:var(--page-fg);font-weight:600}
+.reset{background:none;border:1px solid var(--page-muted);color:var(--page-muted);
+  font:inherit;font-size:11.5px;padding:6px 14px;border-radius:14px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="layout">
+<div class="col-device">
+<h1>Rotary Dial Media</h1>
+<p class="sub">Drag anywhere to swipe. Drag the outer ring in a circle to turn the dial.</p>
+
+<div class="device" id="device"><div class="stage" id="stage">
+
+  <div class="title-measure" id="npMeasure"></div>
+
+  <div class="view active" id="clock"><div class="time">20:41</div></div>
+
+  <div class="view" id="menu">
+    <div class="menu-pill"></div>
+    <div class="menu-list snap" id="menuList"></div>
+  </div>
+
+  <div class="view" id="albums"><div class="album-track snap" id="albumTrack"></div>
+    <svg class="ring" viewBox="0 0 360 360">
+      <circle class="band" cx="180" cy="180" r="176" fill="none"></circle>
+    </svg></div>
+
+  <div class="view" id="nowplaying">
+    <div class="np-strip snap" id="npStrip"></div><div class="scrim"></div>
+    <div class="np-disc" id="npDisc"></div>
+    <div class="np-tri" id="npTri">
+      <svg viewBox="0 0 30 46.9"><path d="M0 0 L30 23.45 L0 46.9 Z" fill="#fff"/></svg>
+    </div>
+    <div class="np-band" id="npBand"></div>
+    <div class="np-ctl np-prev">
+      <svg viewBox="0 0 39.1 33.8"><path d="M20.6 0 L20.6 33.8 L0 16.9 Z" fill="#fff"/><path d="M39.1 0 L39.1 33.8 L17.5 16.9 Z" fill="#fff"/></svg>
+    </div>
+    <div class="np-ctl np-pause">
+      <svg viewBox="0 0 39.1 50.8"><rect x="0" y="0" width="13" height="50.8" fill="#fff"/><rect x="26.1" y="0" width="13" height="50.8" fill="#fff"/></svg>
+    </div>
+    <div class="np-ctl np-next">
+      <svg viewBox="0 0 39.1 33.8"><path d="M0 0 L0 33.8 L20.6 16.9 Z" fill="#fff"/><path d="M18.5 0 L18.5 33.8 L39.1 16.9 Z" fill="#fff"/></svg>
+    </div>
+    <div class="np-bar"><i id="prog"></i></div>
+    <div class="title-band"><div class="title-inner" id="npTitleA"></div><div class="title-inner" id="npTitleB" style="opacity:0"></div></div>
+    <svg class="ring" viewBox="0 0 360 360">
+      <circle class="band" cx="180" cy="180" r="176" fill="none"></circle>
+      <circle class="val" id="volRing" cx="180" cy="180" r="174" stroke="var(--yellow)"></circle>
+    </svg>
+    <div class="chip" id="chip">Volume 60</div>
+  </div>
+
+  <div class="view" id="eqOver">
+    <div class="art" id="eqArt"></div><div class="scrim eq"></div>
+    <div class="trident">
+      <svg width="220" height="197" viewBox="0 0 220 197" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="1.32317" y1="-1.32317" x2="132.582" y2="-1.32317" transform="matrix(-4.37114e-08 -1 -1 4.37114e-08 108.545 133.905)" stroke="#919191" stroke-width="2.64634" stroke-linecap="round"/>
+      <line x1="1.32317" y1="-1.32317" x2="125.966" y2="-1.32317" transform="matrix(-0.866025 0.5 0.5 0.866025 111.074 133.243)" stroke="#919191" stroke-width="2.64634" stroke-linecap="round"/>
+      <line x1="1.32317" y1="-1.32317" x2="125.966" y2="-1.32317" transform="matrix(0.866025 0.5 0.5 -0.866025 109.604 130.861)" stroke="#919191" stroke-width="2.64634" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="ico tap i-treble" data-p="treble"><svg viewBox="0 0 50 101" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M31.0889 45.4594V29.5486L41.09 19.5021C44.7267 15.9108 45.4086 10.1829 42.8629 5.72788C41.8915 3.99916 40.4797 2.55851 38.7709 1.55243C37.0622 0.546344 35.1175 0.0107121 33.1346 0C32.1799 0 31.0889 0.136378 30.2252 0.409135C25.3156 1.72746 21.997 6.2734 21.997 11.3648V26.0937L7.72277 40.5043C4.01947 44.2861 1.50714 49.0714 0.49707 54.2672C-0.512998 59.4629 0.0235905 64.8409 2.04035 69.7347C5.54072 78.372 13.1779 84.3272 21.997 85.8728V88.6458C21.997 89.8277 20.9515 90.9188 19.724 90.9188H12.9051V100.011H19.724C25.8611 100.011 31.0889 94.9647 31.0889 88.6458V86.3728C40.3172 86.3728 50 77.6446 50 64.7796C50 54.324 41.2718 45.4594 31.0889 45.4594ZM31.0889 11.3648C31.0889 10.3193 31.5889 9.50101 32.5436 9.22826C33.5437 8.9555 34.5893 9.36463 35.0893 10.2738C35.3465 10.7104 35.4504 11.2205 35.3845 11.7229C35.3186 12.2253 35.0867 12.6913 34.7256 13.0468L31.0889 16.9564V11.3648ZM21.997 47.7324C17.5875 50.6418 14.2689 55.6423 13.087 60.2791L21.997 62.643V76.5081C19.3908 75.8092 16.9809 74.5187 14.9546 72.7368C12.9284 70.9549 11.3403 68.7298 10.314 66.2343C7.63185 59.5973 9.08655 52.051 14.0871 46.9595L21.997 38.6405V47.7324ZM31.0889 77.281V54.2785C36.4076 54.2785 40.999 59.279 40.999 64.7796C40.999 72.735 35.2257 77.281 31.0889 77.281Z" fill="#32ACA4"/></svg></div>
+    <div class="ico tap i-bass" data-p="bass"><svg viewBox="0 0 72 77" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M64.8 4.8C66.224 4.8 67.6161 5.22227 68.8001 6.01342C69.9841 6.80456 70.907 7.92905 71.4519 9.24468C71.9969 10.5603 72.1395 12.008 71.8616 13.4046C71.5838 14.8013 70.8981 16.0842 69.8912 17.0912C68.8842 18.0981 67.6013 18.7838 66.2046 19.0617C64.808 19.3395 63.3603 19.1969 62.0447 18.6519C60.7291 18.107 59.6046 17.1841 58.8134 16.0001C58.0223 14.8161 57.6 13.424 57.6 12C57.6 10.0904 58.3586 8.25909 59.7088 6.90883C61.0591 5.55857 62.8904 4.8 64.8 4.8ZM64.8 33.6C66.224 33.6 67.6161 34.0223 68.8001 34.8134C69.9841 35.6046 70.907 36.729 71.4519 38.0447C71.9969 39.3603 72.1395 40.808 71.8616 42.2047C71.5838 43.6013 70.8981 44.8842 69.8912 45.8912C68.8842 46.8981 67.6013 47.5838 66.2046 47.8617C64.808 48.1395 63.3603 47.9969 62.0447 47.4519C60.7291 46.907 59.6046 45.9841 58.8134 44.8001C58.0223 43.6161 57.6 42.224 57.6 40.8C57.6 38.8904 58.3586 37.0591 59.7088 35.7088C61.0591 34.3586 62.8904 33.6 64.8 33.6ZM24 0C17.6348 0 11.5303 2.52856 7.02944 7.02944C2.52856 11.5303 0 17.6348 0 24V28.8C0.00755056 30.6602 0.555388 32.4781 1.5769 34.0328C2.59842 35.5874 4.04961 36.8118 5.75402 37.557C7.45844 38.3022 9.34265 38.5362 11.1776 38.2305C13.0125 37.9248 14.7191 37.0926 16.0898 35.835C17.4606 34.5775 18.4364 32.9487 18.8987 31.1469C19.361 29.345 19.2899 27.4477 18.6939 25.6855C18.098 23.9233 17.0029 22.3723 15.5418 21.2209C14.0808 20.0695 12.3167 19.3674 10.464 19.2C11.4543 16.399 13.2867 13.9728 15.7101 12.2541C18.1334 10.5354 21.0291 9.60835 24 9.6C29.0922 9.6 33.9757 11.6228 37.5765 15.2235C41.1771 18.8242 43.2 23.7078 43.2 28.8C43.2 46.032 32.496 58.512 9.6 68.16L13.248 76.992C39.888 65.856 52.8 50.064 52.8 28.8C52.8 21.1618 49.7657 13.8364 44.3647 8.43532C38.9636 3.03428 31.6382 0 24 0Z" fill="#9C0D90"/></svg></div>
+    <div class="ico tap i-subs" data-p="subs"><svg viewBox="0 0 75 67" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M40.625 66.6781C43.0953 66.6781 44.8766 64.8609 44.8766 62.4266V4.46875C44.8766 2.03438 43.0953 0 40.5531 0C38.7719 0 37.5734 0.798438 35.6469 2.61563L19.6219 17.7687C19.3578 17.9894 19.0221 18.1056 18.6781 18.0953H7.88438C2.7625 18.0953 0 20.8922 0 26.3437V40.4422C0 45.8937 2.76094 48.6922 7.88594 48.6922H18.6781C19.0406 48.6922 19.3672 48.8016 19.6219 49.0187L35.6469 64.3156C37.3906 65.9516 38.8438 66.6781 40.625 66.6781ZM60.6067 65.0995C62.3428 66.257 64.4833 65.8124 65.7309 64.0302C71.6139 55.8285 75 44.9113 75 33.5036C75 22.0499 71.658 11.1308 65.7309 2.93097C64.4393 1.19288 62.3428 0.746383 60.6067 1.90574C58.9127 3.0651 58.6444 5.24777 59.982 7.16407C64.8398 14.2946 67.8254 23.6538 67.8254 33.5017C67.8254 43.3515 64.9279 52.7988 59.936 59.8412C58.6904 61.7575 58.9127 63.9421 60.6067 65.0995ZM51.258 53.0652C52.7738 54.1364 54.9565 53.7799 56.25 52.0419C59.7262 47.3623 61.8207 40.4981 61.8207 33.5017C61.8207 26.5072 59.6821 19.6871 56.25 14.9193C54.9584 13.1812 52.8198 12.8248 51.258 13.8941C49.2977 15.1857 49.0735 17.4584 50.5011 19.4188C53.0862 22.895 54.6461 28.1993 54.6461 33.5036C54.6461 38.8079 52.998 44.1084 50.457 47.6286C49.1195 49.5449 49.3417 51.7276 51.258 53.0652Z" fill="#AB1049"/></svg></div>
+    <svg class="ring" viewBox="0 0 360 360">
+      <circle class="band" cx="180" cy="180" r="176" fill="none"></circle>
+      <circle class="val" id="eqVolRing" cx="180" cy="180" r="174" stroke="var(--yellow)"></circle>
+    </svg>
+  </div>
+
+  <div class="view" id="eqFocus">
+    <div class="art" id="eqArt2"></div><div class="scrim eq"></div>
+    <div class="ico i-treble" id="fTreble"><svg viewBox="0 0 50 101" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M31.0889 45.4594V29.5486L41.09 19.5021C44.7267 15.9108 45.4086 10.1829 42.8629 5.72788C41.8915 3.99916 40.4797 2.55851 38.7709 1.55243C37.0622 0.546344 35.1175 0.0107121 33.1346 0C32.1799 0 31.0889 0.136378 30.2252 0.409135C25.3156 1.72746 21.997 6.2734 21.997 11.3648V26.0937L7.72277 40.5043C4.01947 44.2861 1.50714 49.0714 0.49707 54.2672C-0.512998 59.4629 0.0235905 64.8409 2.04035 69.7347C5.54072 78.372 13.1779 84.3272 21.997 85.8728V88.6458C21.997 89.8277 20.9515 90.9188 19.724 90.9188H12.9051V100.011H19.724C25.8611 100.011 31.0889 94.9647 31.0889 88.6458V86.3728C40.3172 86.3728 50 77.6446 50 64.7796C50 54.324 41.2718 45.4594 31.0889 45.4594ZM31.0889 11.3648C31.0889 10.3193 31.5889 9.50101 32.5436 9.22826C33.5437 8.9555 34.5893 9.36463 35.0893 10.2738C35.3465 10.7104 35.4504 11.2205 35.3845 11.7229C35.3186 12.2253 35.0867 12.6913 34.7256 13.0468L31.0889 16.9564V11.3648ZM21.997 47.7324C17.5875 50.6418 14.2689 55.6423 13.087 60.2791L21.997 62.643V76.5081C19.3908 75.8092 16.9809 74.5187 14.9546 72.7368C12.9284 70.9549 11.3403 68.7298 10.314 66.2343C7.63185 59.5973 9.08655 52.051 14.0871 46.9595L21.997 38.6405V47.7324ZM31.0889 77.281V54.2785C36.4076 54.2785 40.999 59.279 40.999 64.7796C40.999 72.735 35.2257 77.281 31.0889 77.281Z" fill="#32ACA4"/></svg></div>
+    <div class="ico i-bass" id="fBass"><svg viewBox="0 0 72 77" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M64.8 4.8C66.224 4.8 67.6161 5.22227 68.8001 6.01342C69.9841 6.80456 70.907 7.92905 71.4519 9.24468C71.9969 10.5603 72.1395 12.008 71.8616 13.4046C71.5838 14.8013 70.8981 16.0842 69.8912 17.0912C68.8842 18.0981 67.6013 18.7838 66.2046 19.0617C64.808 19.3395 63.3603 19.1969 62.0447 18.6519C60.7291 18.107 59.6046 17.1841 58.8134 16.0001C58.0223 14.8161 57.6 13.424 57.6 12C57.6 10.0904 58.3586 8.25909 59.7088 6.90883C61.0591 5.55857 62.8904 4.8 64.8 4.8ZM64.8 33.6C66.224 33.6 67.6161 34.0223 68.8001 34.8134C69.9841 35.6046 70.907 36.729 71.4519 38.0447C71.9969 39.3603 72.1395 40.808 71.8616 42.2047C71.5838 43.6013 70.8981 44.8842 69.8912 45.8912C68.8842 46.8981 67.6013 47.5838 66.2046 47.8617C64.808 48.1395 63.3603 47.9969 62.0447 47.4519C60.7291 46.907 59.6046 45.9841 58.8134 44.8001C58.0223 43.6161 57.6 42.224 57.6 40.8C57.6 38.8904 58.3586 37.0591 59.7088 35.7088C61.0591 34.3586 62.8904 33.6 64.8 33.6ZM24 0C17.6348 0 11.5303 2.52856 7.02944 7.02944C2.52856 11.5303 0 17.6348 0 24V28.8C0.00755056 30.6602 0.555388 32.4781 1.5769 34.0328C2.59842 35.5874 4.04961 36.8118 5.75402 37.557C7.45844 38.3022 9.34265 38.5362 11.1776 38.2305C13.0125 37.9248 14.7191 37.0926 16.0898 35.835C17.4606 34.5775 18.4364 32.9487 18.8987 31.1469C19.361 29.345 19.2899 27.4477 18.6939 25.6855C18.098 23.9233 17.0029 22.3723 15.5418 21.2209C14.0808 20.0695 12.3167 19.3674 10.464 19.2C11.4543 16.399 13.2867 13.9728 15.7101 12.2541C18.1334 10.5354 21.0291 9.60835 24 9.6C29.0922 9.6 33.9757 11.6228 37.5765 15.2235C41.1771 18.8242 43.2 23.7078 43.2 28.8C43.2 46.032 32.496 58.512 9.6 68.16L13.248 76.992C39.888 65.856 52.8 50.064 52.8 28.8C52.8 21.1618 49.7657 13.8364 44.3647 8.43532C38.9636 3.03428 31.6382 0 24 0Z" fill="#9C0D90"/></svg></div>
+    <div class="ico i-subs" id="fSubs"><svg viewBox="0 0 75 67" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M40.625 66.6781C43.0953 66.6781 44.8766 64.8609 44.8766 62.4266V4.46875C44.8766 2.03438 43.0953 0 40.5531 0C38.7719 0 37.5734 0.798438 35.6469 2.61563L19.6219 17.7687C19.3578 17.9894 19.0221 18.1056 18.6781 18.0953H7.88438C2.7625 18.0953 0 20.8922 0 26.3437V40.4422C0 45.8937 2.76094 48.6922 7.88594 48.6922H18.6781C19.0406 48.6922 19.3672 48.8016 19.6219 49.0187L35.6469 64.3156C37.3906 65.9516 38.8438 66.6781 40.625 66.6781ZM60.6067 65.0995C62.3428 66.257 64.4833 65.8124 65.7309 64.0302C71.6139 55.8285 75 44.9113 75 33.5036C75 22.0499 71.658 11.1308 65.7309 2.93097C64.4393 1.19288 62.3428 0.746383 60.6067 1.90574C58.9127 3.0651 58.6444 5.24777 59.982 7.16407C64.8398 14.2946 67.8254 23.6538 67.8254 33.5017C67.8254 43.3515 64.9279 52.7988 59.936 59.8412C58.6904 61.7575 58.9127 63.9421 60.6067 65.0995ZM51.258 53.0652C52.7738 54.1364 54.9565 53.7799 56.25 52.0419C59.7262 47.3623 61.8207 40.4981 61.8207 33.5017C61.8207 26.5072 59.6821 19.6871 56.25 14.9193C54.9584 13.1812 52.8198 12.8248 51.258 13.8941C49.2977 15.1857 49.0735 17.4584 50.5011 19.4188C53.0862 22.895 54.6461 28.1993 54.6461 33.5036C54.6461 38.8079 52.998 44.1084 50.457 47.6286C49.1195 49.5449 49.3417 51.7276 51.258 53.0652Z" fill="#AB1049"/></svg></div>
+    <div class="back-btn" id="eqBack"><svg viewBox="0 0 184 85" fill="none" xmlns="http://www.w3.org/2000/svg"><rect opacity="0.8" width="184" height="85" rx="42.5" fill="#5B5B5B"/><path d="M88.0625 66.125H100.953C105.739 66.125 110.33 64.2236 113.714 60.8392C117.099 57.4547 119 52.8645 119 48.0781C119 43.2918 117.099 38.7015 113.714 35.3171C110.33 31.9326 105.739 30.0313 100.953 30.0313H67.4375M76.0313 18L64 30.0313L76.0313 42.0625" stroke="white" stroke-width="6.875" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <svg class="ring" viewBox="0 0 360 360">
+      <circle class="band" cx="180" cy="180" r="176" fill="none"></circle>
+      <circle class="val" id="eqRing" cx="180" cy="180" r="174"></circle>
+    </svg>
+  </div>
+
+  <!-- playground overlays, drawn in the 360 design space -->
+  <div class="ovl bounds" id="ovlBounds"></div>
+  <div class="ovl zone"><svg viewBox="0 0 360 360">
+    <circle cx="180" cy="180" r="122.4" fill="rgba(236,214,19,.08)" stroke="#ECD613" stroke-dasharray="4 4"/>
+    <text x="180" y="66" fill="#ECD613" font-size="9" text-anchor="middle">touch inside → swipe</text>
+    <text x="180" y="40" fill="#ECD613" font-size="9" text-anchor="middle">start out here + go round → dial</text>
+  </svg></div>
+
+</div></div>
+
+<p class="hint" id="hint"><b>Tap</b> to wake</p>
+<button class="reset" id="reset">Reset</button>
+<p class="links"><a href="prototype/index.html">Original prototype</a> &middot; <a href="docs/SPEC.md">Spec</a> &middot; <a href="docs/OPEN-QUESTIONS.md">Open questions</a></p>
+</div>
+
+<div class="col-panel">
+
+  <section class="card">
+    <h2>Screen</h2>
+    <div class="flow" id="flow"></div>
+    <p>Jump straight to any screen. The current one is highlighted.</p>
+  </section>
+
+  <section class="card">
+    <h2>Rotary encoder</h2>
+    <div class="dial">
+      <div class="knob" id="knob" title="Drag round, or scroll"><div class="knob-cap" id="knobCap"><i class="knob-mark"></i></div></div>
+      <div class="dial-side">
+        <div class="dial-target" id="dialTarget"></div>
+        <div class="dial-btns">
+          <button class="btn" id="dialDown">− step<kbd>[</kbd></button>
+          <button class="btn" id="dialUp">+ step<kbd>]</kbd></button>
+        </div>
+      </div>
+    </div>
+    <p>Stands in for the physical encoder, separate from the touch panel. One step every 8°, clockwise is up.</p>
+  </section>
+
+  <section class="card">
+    <h2>Touch gestures</h2>
+    <div class="pad">
+      <span></span><button class="btn" data-sw="up">Swipe ↑<kbd>↑</kbd></button><span></span>
+      <button class="btn" data-sw="left">← Swipe<kbd>←</kbd></button>
+      <button class="btn" id="padTap">Tap<kbd>␣</kbd></button>
+      <button class="btn" data-sw="right">Swipe →<kbd>→</kbd></button>
+      <span></span><button class="btn" data-sw="down">Swipe ↓<kbd>↓</kbd></button><span></span>
+    </div>
+    <div class="ctx" id="ctx"></div>
+  </section>
+
+  <section class="card">
+    <h2>State</h2>
+    <table class="state"><tbody id="state"></tbody></table>
+  </section>
+
+  <section class="card">
+    <h2>Overlays</h2>
+    <div class="toggles">
+      <label><input type="checkbox" id="tBounds"> Design-token boxes (from DESIGN-TOKENS.md)</label>
+      <label><input type="checkbox" id="tZone"> Dial-versus-swipe zone (68% radius)</label>
+    </div>
+    <div class="zoom">Size
+      <button class="btn on" data-z="360">1×</button>
+      <button class="btn" data-z="540">1.5×</button>
+      <button class="btn" data-z="720">2×</button>
+    </div>
+    <p class="coords" id="coords">Point at the screen for 360 × 360 coordinates</p>
+  </section>
+
+  <section class="card">
+    <h2>Event log</h2>
+    <ul class="log" id="log"></ul>
+  </section>
+
+</div>
+</div>
+
+<script>
+var ART = {"floyd": "assets/art/floyd.jpg", "prince": "assets/art/prince.jpg", "zep": "assets/art/zep.jpg", "nma": "assets/art/nma.jpg", "morillo": "assets/art/morillo.jpg"};
+var ALBUMS = [{"art": "floyd", "title": "The Dark Side of the Moon", "tracks": ["Speak to Me", "Breathe (In the Air)", "On the Run", "Time", "The Great Gig in the Sky", "Money", "Us and Them", "Any Colour You Like", "Brain Damage", "Eclipse"]}, {"art": "prince", "title": "Purple Rain", "tracks": ["Let's Go Crazy", "Take Me With U", "The Beautiful Ones", "Computer Blue", "Darling Nikki", "When Doves Cry", "I Would Die 4 U", "Baby I'm a Star", "Purple Rain"]}, {"art": "zep", "title": "Physical Graffiti", "tracks": ["Custard Pie", "The Rover", "In My Time of Dying", "Houses of the Holy", "Trampled Under Foot", "Kashmir", "In the Light", "Bron-Yr-Aur", "Down by the Seaside", "Ten Years Gone", "Night Flight", "The Wanton Song", "Boogie with Stu", "Black Country Woman", "Sick Again"]}, {"art": "nma", "title": "Thunder and Consolation", "tracks": ["I Love the World", "Stupid Questions", "225", "Inheritance", "Green and Grey", "Ballad of Bodmin Pill", "Family", "Family Life", "Vagabonds", "Archway Towers"]}, {"art": "morillo", "title": "Subliminal Sessions Ten", "tracks": ["Stay Around (Angel Moraes Edition)", "Brighter Days (Haji & Emanuel Remix)", "I Got Something for You (Original)", "I Need Somebody (Tom Novy Remix)", "Take Me Higher", "Dreams", "Jazz in Your Face (Richard Grey Remix)", "5 in the Morning (Dub Mix)", "Off My Rocker", "Love Sensation 2006 (Original)", "Get It On (Summer Love Joe T Vanelli Dubby Mix)", "Eletro (Original)", "Big Love", "Call Me (Dub)", "What Else Is There? (Trentmoller Mix)", "Dance I Said (MNM Mix)", "Ame (Original)", "The Sky Was Pink", "Pride (Original)", "Loose Control (Main Mix)", "Long Train Running (Club Mix)"]}];
+</script>
+<script>
+(function(){
+  "use strict";
+  var C = 2*Math.PI*174, STEP = 60, N = 5;
+  var S = {view:"clock",menu:2,album:0,track:0,playing:false,volume:60,
+           param:"bass",eq:{treble:0,bass:0,subs:0}};
+  var MENU = ["Search","Playlist","Albums","Artists","Radio"];
+  var COL = {treble:"#32ACA4", bass:"#9C0D90", subs:"#AB1049"};
+  var $ = function(i){return document.getElementById(i);};
+  var V = {clock:$("clock"),menu:$("menu"),albums:$("albums"),
+           nowplaying:$("nowplaying"),eqOver:$("eqOver"),eqFocus:$("eqFocus")};
+  var HINT = {
+    clock:"<b>Tap</b> to wake",
+    menu:"<b>Drag up / down</b> &middot; <b>tap</b> to choose",
+    albums:"<b>Drag left / right</b> between albums &middot; <b>tap</b> to open",
+    nowplaying:"<b>Tap</b> play &middot; <b>drag L/R</b> change track &middot; <b>turn the ring</b> for volume &middot; <b>drag up</b> for EQ",
+    eqOver:"<b>Tap</b> a zone &middot; <b>drag down</b> to return",
+    eqFocus:"<b>Turn the ring</b> to adjust &middot; <b>back</b> for all three &middot; <b>drag down</b> to exit"
+  };
+  // playground hook: onView() refreshes the panel whenever the screen changes
+  function show(v){ var was=S.view; S.view=v; for(var k in V) V[k].classList.toggle("active",k===v); $("hint").innerHTML=HINT[v]; onView(was); }
+  function fit(){ var w=$("device").getBoundingClientRect().width;
+    $("stage").style.transform="scale("+(w/360)+")"; return w/360; }
+  var K=1;
+
+  var ml=$("menuList");
+  MENU.forEach(function(m){var d=document.createElement("div");d.className="menu-item";d.textContent=m;ml.appendChild(d);});
+  function menuY(i){ return 150 - i*STEP; }
+  function highlight(i){ var it=ml.children; for(var k=0;k<it.length;k++) it[k].classList.toggle("sel",k===i); }
+  function renderMenu(){ ml.style.transform="translateY("+menuY(S.menu)+"px)"; highlight(S.menu); }
+
+  var at=$("albumTrack");
+  ALBUMS.forEach(function(a,i){
+    var s=document.createElement("div"); s.className="album-slide";
+    s.style.transform="translateX("+(i*360)+"px)";
+    var art=document.createElement("div"); art.className="art";
+    art.style.backgroundImage="url("+ART[a.art]+")"; s.appendChild(art);
+    var sc=document.createElement("div"); sc.className="scrim"; s.appendChild(sc);
+    var l=document.createElement("div"); l.className="album-label";
+    var li=document.createElement("span"); li.className="label-inner"; li.textContent=a.title;
+    l.appendChild(li); s.appendChild(l);
+    at.appendChild(s);
+  });
+  function renderAlbums(){ at.style.transform="translateX("+(-S.album*360)+"px)"; updateLabels(); }
+
+  function openParam(p){
+    S.param=p;
+    $("fTreble").classList.toggle("on",p==="treble");
+    $("fBass").classList.toggle("on",p==="bass");
+    $("fSubs").classList.toggle("on",p==="subs");
+    $("eqRing").setAttribute("stroke",COL[p]);
+    renderEq(); show("eqFocus");
+  }
+  function renderEq(){
+    var pct=(S.eq[S.param]+12)/24;
+    $("eqRing").setAttribute("stroke-dasharray",C);
+    $("eqRing").setAttribute("stroke-dashoffset",C*(1-pct));
+  }
+
+  var titleAnim = null, titleFront = "A", firstTitle = true, lastCycle = 0;
+  var TITLE_SPACE = 220;        // usable width at the band's narrowest (lower) edge
+
+  function scrollSteps(over){
+    return [
+      {transform:"translateX(0)",             offset:0},
+      {transform:"translateX(0)",             offset:0.18},
+      {transform:"translateX("+(-over)+"px)", offset:0.52},
+      {transform:"translateX("+(-over)+"px)", offset:0.72},
+      {transform:"translateX(0)",             offset:1}
+    ];
+  }
+  var labelAnims = [];
+  function updateLabels(){
+    labelAnims.forEach(function(a){ if(a) a.cancel(); });
+    labelAnims = [];
+    var slides = at.children, m = $("npMeasure");
+    for(var i=0;i<slides.length;i++){
+      var outer = slides[i].querySelector(".album-label");
+      var inner = outer.querySelector(".label-inner");
+      outer.classList.remove("mq"); inner.style.transform = "";
+      if(i !== S.album) continue;
+      m.textContent = ALBUMS[i].title;
+      var over = m.offsetWidth - TITLE_SPACE;
+      if(over <= 0) continue;
+      outer.classList.add("mq");
+      labelAnims.push(inner.animate(scrollSteps(over),
+        {duration:2600 + over*55, iterations:Infinity, easing:"ease-in-out"}));
+    }
+  }
+
+  function marquee(el, text){
+    var m = $("npMeasure");
+    m.textContent = text;
+    var over = m.offsetWidth - TITLE_SPACE;
+    el.style.transform = "";
+    if(over <= 0){ el.classList.remove("marquee"); lastCycle = 0; return null; }
+    el.classList.add("marquee");
+    lastCycle = 2600 + over*55;
+    return el.animate(scrollSteps(over),
+      {duration:lastCycle, iterations:Infinity, easing:"ease-in-out"});
+  }
+
+  function setTitle(text){
+    var inEl  = $(titleFront === "A" ? "npTitleB" : "npTitleA");
+    var outEl = $(titleFront === "A" ? "npTitleA" : "npTitleB");
+    if(titleAnim){ titleAnim.cancel(); titleAnim = null; }
+    outEl.classList.remove("marquee"); outEl.style.transform = "";
+    inEl.textContent = text;
+    titleAnim = marquee(inEl, text);
+    if(firstTitle){                       // no fade on first paint
+      firstTitle = false;
+      inEl.style.opacity = "1"; outEl.style.opacity = "0";
+    } else {
+      inEl.animate([{opacity:0},{opacity:1}], {duration:250, easing:"ease", fill:"forwards"});
+      outEl.animate([{opacity:1},{opacity:0}], {duration:250, easing:"ease", fill:"forwards"});
+      inEl.style.opacity = "1"; outEl.style.opacity = "0";
+    }
+    titleFront = (titleFront === "A") ? "B" : "A";
+  }
+
+  var stripAlbum = -1;
+  function buildStrip(){
+    var a = ALBUMS[S.album], s = $("npStrip");
+    s.innerHTML = "";
+    for(var i=0;i<a.tracks.length;i++){
+      var d = document.createElement("div");
+      d.className = "np-slide";
+      d.style.transform = "translateX("+(i*360)+"px)";
+      d.style.backgroundImage = "url("+ART[a.art]+")";
+      s.appendChild(d);
+    }
+    stripAlbum = S.album;
+  }
+  function stripPos(){ $("npStrip").style.transform = "translateX("+(-S.track*360)+"px)"; }
+
+  var elapsed = 0, TRACK_LEN = 10;      // seconds per track, for the prototype
+  function clearBand(){ $("npBand").classList.remove("show");
+    $("npDisc").style.opacity="1"; $("npTri").style.opacity="1"; }
+  function transport(){
+    var p = S.playing;
+    $("npBand").classList.toggle("show", p);
+    $("npDisc").style.opacity = p ? "0" : "1";
+    $("npTri").style.opacity  = p ? "0" : "1";
+  }
+  var peekT;
+  function peekTitle(){
+    var np = $("nowplaying");
+    if(!S.playing){ np.classList.remove("peek"); return; }
+    np.classList.add("peek");
+    clearTimeout(peekT);
+    // a scrolling title must complete a full pass before it starts to fade
+    var hold = Math.max(2000, lastCycle);
+    peekT = setTimeout(function(){ np.classList.remove("peek"); }, hold);
+  }
+  function setTrack(i){
+    var a = ALBUMS[S.album];
+    S.track = (i + a.tracks.length) % a.tracks.length;
+    elapsed = 0; $("prog").style.width = "0%";
+    renderNP(); peekTitle();
+    log("Track "+(S.track+1)+": "+a.tracks[S.track]);
+  }
+  function enterNP(){ S.track=0; S.playing=false; elapsed=0; clearTimeout(peekT);
+    $("nowplaying").classList.remove("peek");
+    $("prog").style.width="0%"; clearBand(); renderNP(); show("nowplaying"); }
+  function renderNP(){
+    var a=ALBUMS[S.album];
+    if(S.track>=a.tracks.length) S.track=0;
+    if(stripAlbum !== S.album) buildStrip();
+    stripPos();
+    setTitle(a.tracks[S.track]);
+    $("nowplaying").classList.toggle("playing", S.playing);
+    transport();
+    var url="url("+ART[a.art]+")";
+    $("eqArt").style.backgroundImage=url; $("eqArt2").style.backgroundImage=url;
+    var off=C*(1-S.volume/100);
+    ["volRing","eqVolRing"].forEach(function(id){
+      $(id).setAttribute("stroke-dasharray",C); $(id).setAttribute("stroke-dashoffset",off); });
+  }
+  var ct;
+  function vol(d){
+    S.volume=Math.max(0,Math.min(100,S.volume+d));
+    $("chip").textContent="Volume "+S.volume; $("chip").classList.add("show");
+    clearTimeout(ct); ct=setTimeout(function(){$("chip").classList.remove("show");},1100);
+    renderNP();
+  }
+  setInterval(function(){
+    if(!S.playing) return;
+    elapsed += 0.1;
+    if(elapsed >= TRACK_LEN){ SRC="Auto"; setTrack(S.track+1); return; }
+    $("prog").style.width = (elapsed/TRACK_LEN*100).toFixed(1)+"%";
+  },100);
+
+  var dev=$("device"), st=null, mode=null, lastA=0, acc=0, startR=0, moved=false;
+  function pt(e){ var r=dev.getBoundingClientRect();
+    return {x:e.clientX-r.left-r.width/2, y:e.clientY-r.top-r.height/2, R:r.width/2}; }
+
+  dev.addEventListener("pointerdown",function(e){
+    SRC="Touch";
+    dev.setPointerCapture(e.pointerId);
+    var p=pt(e); startR=Math.sqrt(p.x*p.x+p.y*p.y); lastA=Math.atan2(p.y,p.x);
+    st={x:e.clientX,y:e.clientY}; mode=null; acc=0; moved=false;
+    ml.classList.remove("snap"); at.classList.remove("snap");
+  });
+  dev.addEventListener("pointermove",function(e){
+    if(!st) return;
+    var p=pt(e), dx=e.clientX-st.x, dy=e.clientY-st.y, r=Math.sqrt(p.x*p.x+p.y*p.y);
+    if(Math.abs(dx)>5||Math.abs(dy)>5) moved=true;
+    if(mode===null && moved){
+      var a0=Math.atan2(p.y,p.x), da=a0-lastA;
+      while(da>Math.PI) da-=2*Math.PI; while(da<-Math.PI) da+=2*Math.PI;
+      mode=(startR>p.R*0.68 && Math.abs(da)*r>Math.abs(r-startR)*1.2 && Math.abs(da)*r>4)?"rotate":"swipe";
+      if(mode==="rotate") SRC="Ring";
+    }
+    if(mode==="rotate"){
+      var a=Math.atan2(p.y,p.x), d=a-lastA;
+      while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI;
+      lastA=a; acc+=d*(180/Math.PI);
+      while(Math.abs(acc)>=8){ var s=acc>0?1:-1; acc-=s*8; rotate(s); }
+      return;
+    }
+    lastA=Math.atan2(p.y,p.x);
+    if(S.view==="menu"){
+      var raw=menuY(S.menu)+dy/K;
+      raw=Math.max(menuY(N-1)-26,Math.min(menuY(0)+26,raw));
+      var idx=Math.max(0,Math.min(N-1,Math.round((150-raw)/STEP)));
+      var off=raw-menuY(idx), t=Math.abs(off)/(STEP/2);
+      ml.style.transform="translateY("+(raw-off*0.34*(1-t*t))+"px)";
+      highlight(idx);
+    } else if(S.view==="albums"){
+      at.style.transform="translateX("+(-S.album*360+dx/K)+"px)";
+    } else if(S.view==="nowplaying" && Math.abs(dx)>Math.abs(dy)){
+      var sp=$("npStrip"); sp.classList.remove("snap");
+      sp.style.transform="translateX("+(-S.track*360+dx/K)+"px)";
+    }
+  });
+  dev.addEventListener("pointerup",function(e){
+    if(!st) return;
+    var dx=e.clientX-st.x, dy=e.clientY-st.y, m=mode, mv=moved;
+    st=null; mode=null; ml.classList.add("snap"); at.classList.add("snap");
+    if(m==="rotate") return;
+    if(S.view==="menu"){
+      if(mv){ var raw=menuY(S.menu)+dy/K;
+        raw=Math.max(menuY(N-1)-26,Math.min(menuY(0)+26,raw));
+        S.menu=Math.max(0,Math.min(N-1,Math.round((150-raw)/STEP))); renderMenu();
+      } else tap(e);
+      return;
+    }
+    if(S.view==="albums"){
+      if(mv){
+        if(Math.abs(dy)>60&&Math.abs(dy)>Math.abs(dx)&&dy>0){ show("menu"); renderMenu(); return; }
+        if(Math.abs(dx/K)>64){ S.album+=dx<0?1:-1; S.album=Math.max(0,Math.min(ALBUMS.length-1,S.album)); }
+        renderAlbums();
+      } else tap(e);
+      return;
+    }
+    if(S.view==="nowplaying"){
+      $("npStrip").classList.add("snap");
+      if(!mv){ tap(e); return; }
+      if(Math.abs(dx)>Math.abs(dy)){
+        if(Math.abs(dx/K)>64) setTrack(S.track + (dx<0?1:-1)); else stripPos();
+        return;
+      }
+      if(Math.abs(dy)>40) swipe(dy>0?"down":"up"); else stripPos();
+      return;
+    }
+    if(!mv){ tap(e); return; }
+    if(Math.abs(dx)<40&&Math.abs(dy)<40) return;
+    swipe(Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up"));
+  });
+  dev.addEventListener("wheel",function(e){e.preventDefault();SRC="Wheel";rotate(e.deltaY>0?-1:1);},{passive:false});
+
+  function rotate(s){
+    if(S.view==="nowplaying") vol(s*2);
+    else if(S.view==="eqFocus"){ S.eq[S.param]=Math.max(-12,Math.min(12,S.eq[S.param]+s)); renderEq(); }
+    logDial(s);
+  }
+  function hit(e, sel){
+    if(!e) return null;
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    return (el && el.closest) ? el.closest(sel) : null;
+  }
+  function tap(e){
+    if(S.view==="clock"){ show("menu"); renderMenu(); }
+    else if(S.view==="menu"){ show("albums"); renderAlbums(); }
+    else if(S.view==="albums"){ enterNP(); }
+    else if(S.view==="nowplaying"){ S.playing=!S.playing; renderNP(); peekTitle(); log(S.playing?"Play":"Pause"); }
+    else if(S.view==="eqOver"){
+      var z = hit(e, ".ico.tap");
+      if(z) openParam(z.getAttribute("data-p"));
+    }
+    else if(S.view==="eqFocus"){
+      if(hit(e, ".back-btn")) show("eqOver");
+    }
+  }
+  function swipe(d){
+    if(S.view==="nowplaying"){
+      var a=ALBUMS[S.album];
+      if(d==="up"){ clearBand(); show("eqOver"); }
+      if(d==="down"){ clearBand(); show("albums"); renderAlbums(); }
+    } else if(S.view==="eqOver"||S.view==="eqFocus"){
+      if(d==="down"){ renderNP(); show("nowplaying"); }
+    } else if(S.view==="clock") tap(e);
+  }
+
+  window.addEventListener("resize",function(){K=fit();});
+  $("reset").addEventListener("click",function(){
+    S={view:"clock",menu:2,album:0,track:0,playing:false,volume:60,param:"bass",eq:{treble:0,bass:0,subs:0}};
+    elapsed=0; $("prog").style.width="0%"; clearBand();
+    renderMenu(); renderAlbums(); renderNP(); show("clock");
+    logEl.innerHTML=""; log("Reset");
+  });
+
+  /* ================= playground panel =================
+     Everything below drives the engine above through its own functions, so
+     panel actions behave exactly like the equivalent touch gesture. */
+
+  var SRC = "Touch";
+  var NAMES = {clock:"Clock", menu:"Menu", albums:"Album browse",
+               nowplaying:"Now Playing", eqOver:"EQ overview", eqFocus:"EQ focus"};
+  var FRAMES = {clock:"01", menu:"02", albums:"03", nowplaying:"04 / 05", eqOver:"06", eqFocus:"13–15"};
+  var PNAME = {treble:"Treble", bass:"Bass", subs:"Subs"};
+
+  var logEl = $("log");
+  function log(msg){
+    var li = document.createElement("li");
+    li.innerHTML = '<span class="src"></span><span></span>';
+    li.firstChild.textContent = SRC; li.lastChild.textContent = msg;
+    logEl.insertBefore(li, logEl.firstChild);
+    while(logEl.children.length > 30) logEl.removeChild(logEl.lastChild);
+    renderState(); renderBounds();
+  }
+  function logDial(s){
+    var sign = s>0 ? "+1" : "−1";
+    if(S.view==="nowplaying") log("Dial "+sign+" → Volume "+S.volume);
+    else if(S.view==="eqFocus") log("Dial "+sign+" → "+PNAME[S.param]+" "+fmtEq(S.eq[S.param]));
+    else log("Dial "+sign+" → no effect on "+NAMES[S.view]);
+  }
+  function fmtEq(v){ return (v>0?"+":v<0?"−":"")+Math.abs(v); }
+
+  // screen jumper
+  var flow = $("flow");
+  Object.keys(NAMES).forEach(function(v){
+    var b = document.createElement("button");
+    b.className = "btn"; b.setAttribute("data-v", v);
+    b.innerHTML = "<span></span><small>"+FRAMES[v]+"</small>";
+    b.firstChild.textContent = NAMES[v];
+    b.addEventListener("click", function(){ SRC="Panel"; jump(v); });
+    flow.appendChild(b);
+  });
+  function jump(v){
+    if(v===S.view) return;
+    if(v==="menu"){ renderMenu(); show("menu"); }
+    else if(v==="albums"){ renderAlbums(); show("albums"); }
+    else if(v==="nowplaying"){ if(S.view==="albums"||S.view==="menu"||S.view==="clock") enterNP(); else { renderNP(); show("nowplaying"); } }
+    else if(v==="eqOver"){ renderNP(); clearBand(); show("eqOver"); }
+    else if(v==="eqFocus"){ renderNP(); openParam(S.param); }
+    else show(v);
+  }
+
+  // panel gestures, mapped to what the same touch gesture does on each screen
+  function panelSwipe(d){
+    if(S.view==="menu"){
+      if(d==="up"||d==="down"){ S.menu=Math.max(0,Math.min(N-1,S.menu+(d==="up"?1:-1))); renderMenu(); }
+      return;
+    }
+    if(S.view==="albums"){
+      if(d==="down"){ show("menu"); renderMenu(); return; }
+      if(d==="left"||d==="right"){ S.album=Math.max(0,Math.min(ALBUMS.length-1,S.album+(d==="left"?1:-1))); renderAlbums(); }
+      return;
+    }
+    if(S.view==="nowplaying" && (d==="left"||d==="right")){ setTrack(S.track+(d==="left"?1:-1)); return; }
+    if(S.view==="clock"){ tap(null); return; }
+    swipe(d);
+  }
+  function panelTap(){ tap(null); }
+  [].forEach.call(document.querySelectorAll("[data-sw]"), function(b){
+    b.addEventListener("click", function(){ SRC="Panel"; panelSwipe(b.getAttribute("data-sw")); });
+  });
+  $("padTap").addEventListener("click", function(){ SRC="Panel"; panelTap(); });
+
+  // context actions: the taps that need a target on screen
+  function renderCtx(){
+    var c = $("ctx"); c.innerHTML = "";
+    function add(label, key, fn){
+      var b = document.createElement("button"); b.className = "btn";
+      b.innerHTML = "<span></span><kbd>"+key+"</kbd>"; b.firstChild.textContent = label;
+      b.addEventListener("click", function(){ SRC="Panel"; fn(); }); c.appendChild(b);
+    }
+    if(S.view==="eqOver"){
+      add("Tap treble","1",function(){openParam("treble");});
+      add("Tap bass","2",function(){openParam("bass");});
+      add("Tap subs","3",function(){openParam("subs");});
+    } else if(S.view==="eqFocus"){
+      add("Tap back","Esc",function(){show("eqOver");});
+    } else if(S.view==="menu"){
+      var p = document.createElement("p"); p.style.margin = "0";
+      p.textContent = "Every item opens Album browse — only Albums is designed (Q4).";
+      c.appendChild(p);
+    }
+  }
+
+  // virtual rotary encoder
+  var knob = $("knob"), cap = $("knobCap"), kAng = 0, kLast = null, kAcc = 0;
+  function dial(s){ SRC="Encoder"; rotate(s); kAng += s*8; cap.style.transform = "rotate("+kAng+"deg)"; }
+  function knobA(e){ var r = knob.getBoundingClientRect();
+    return Math.atan2(e.clientY-r.top-r.height/2, e.clientX-r.left-r.width/2)*180/Math.PI; }
+  knob.addEventListener("pointerdown", function(e){ knob.setPointerCapture(e.pointerId); kLast = knobA(e); kAcc = 0; });
+  knob.addEventListener("pointermove", function(e){
+    if(kLast===null) return;
+    var a = knobA(e), d = a-kLast;
+    while(d>180) d-=360; while(d<-180) d+=360;
+    kLast = a; kAcc += d;
+    while(Math.abs(kAcc)>=8){ var s = kAcc>0?1:-1; kAcc -= s*8; dial(s); }
+  });
+  ["pointerup","pointercancel"].forEach(function(t){ knob.addEventListener(t, function(){ kLast = null; }); });
+  knob.addEventListener("wheel", function(e){ e.preventDefault(); dial(e.deltaY>0?-1:1); }, {passive:false});
+  $("dialUp").addEventListener("click", function(){ dial(1); });
+  $("dialDown").addEventListener("click", function(){ dial(-1); });
+
+  // keyboard — panel buttons don't take focus on click, so Space stays a screen tap
+  document.addEventListener("mousedown", function(e){ if(e.target.closest && e.target.closest(".btn")) e.preventDefault(); });
+  document.addEventListener("keydown", function(e){
+    if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    if(e.metaKey||e.ctrlKey||e.altKey) return;
+    var k = e.key, handled = true;
+    SRC = "Key";
+    if(k==="ArrowUp") panelSwipe("up");
+    else if(k==="ArrowDown") panelSwipe("down");
+    else if(k==="ArrowLeft") panelSwipe("left");
+    else if(k==="ArrowRight") panelSwipe("right");
+    else if(k===" "||k==="Enter"){ if(e.target && e.target.tagName==="BUTTON") return; panelTap(); }
+    else if(k==="]"||k==="="||k==="+"||e.code==="BracketRight"||e.code==="Equal") dial(1);
+    else if(k==="["||k==="-"||e.code==="BracketLeft"||e.code==="Minus") dial(-1);
+    else if(S.view==="eqOver" && (k==="1"||k==="2"||k==="3")) openParam(["treble","bass","subs"][+k-1]);
+    else if(S.view==="eqFocus" && (k==="Escape"||k==="Backspace")) show("eqOver");
+    else handled = false;
+    if(handled) e.preventDefault();
+  });
+
+  // live state table
+  function meter(pct, col){ return '<span class="meter"><i style="width:'+(pct*100).toFixed(1)+'%;background:'+col+'"></i></span>'; }
+  function renderState(){
+    var a = ALBUMS[S.album], rows = [
+      ["Screen", NAMES[S.view]+(S.view==="nowplaying"?(S.playing?" · playing (frame 05)":" · paused (frame 04)"):"")],
+      ["Menu item", MENU[S.menu]],
+      ["Album", (S.album+1)+" / "+ALBUMS.length+" · "+a.title],
+      ["Track", (S.track+1)+" / "+a.tracks.length+" · "+a.tracks[S.track]],
+      ["Playback", (S.playing?"Playing":"Paused")+" · "+elapsed.toFixed(1)+" / "+TRACK_LEN+" s"],
+      ["Volume", meter(S.volume/100,"#ECD613")+S.volume],
+      ["Treble", meter((S.eq.treble+12)/24,COL.treble)+fmtEq(S.eq.treble)],
+      ["Bass", meter((S.eq.bass+12)/24,COL.bass)+fmtEq(S.eq.bass)],
+      ["Subs", meter((S.eq.subs+12)/24,COL.subs)+fmtEq(S.eq.subs)]
+    ];
+    var html = rows.map(function(r){ return "<tr><td>"+r[0]+"</td><td>"+r[1].replace(/&(?!#?\w+;)/g,"&amp;")+"</td></tr>"; }).join("");
+    if($("state").innerHTML !== html) $("state").innerHTML = html;
+    var t = $("dialTarget");
+    var tgt = S.view==="nowplaying" ? "Turning adjusts <b>volume</b> (0–100, 2 per step)"
+            : S.view==="eqFocus" ? "Turning adjusts <b style=\"color:"+COL[S.param]+"\">"+PNAME[S.param]+"</b> (−12 to +12, 1 per step)"
+            : "Turning does nothing on <b>"+NAMES[S.view]+"</b>";
+    if(t.innerHTML !== tgt) t.innerHTML = tgt;
+  }
+  setInterval(renderState, 100);
+
+  // design-token boxes, per screen, straight from docs/DESIGN-TOKENS.md
+  var BOX = {
+    menu:[["Highlight pill",54,151,251,58],["Text block",121,29,125,300]],
+    albums:[["Album band",-2,267.7,364,52],["Usable text 220",70,267.7,220,52,1]],
+    paused:[["Play disc",126,107.3,120,120],["Triangle",178,142,30,46.9],
+            ["Title band",-2,267.7,364,52],["Usable text 220",70,267.7,220,52,1]],
+    playing:[["Transport band",33,138,294,85],["Prev",68.9,159.6,39.1,33.8],["Pause",160.4,151,39.1,50.8],
+             ["Next",252,159.6,39.1,33.8],["Progress",69,213.8,222.1,3.4],["Title band (peek)",-2,267.7,364,52]],
+    eqOver:[["Trident",71,48,219,196.9],["Treble",77.5,80,50,100],["Bass",225,92,72,77],["Subs",136,233.3,75,66.7]],
+    treble:[["Treble icon",154,64,50,100]], bass:[["Bass icon",152,80,72,77]], subs:[["Subs icon",142,85,75,66.7]],
+    back:[["Back button",88,206,184,85]]
+  };
+  var RINGS = '<svg viewBox="0 0 360 360" fill="none" stroke="var(--ovl)" stroke-width=".6" stroke-dasharray="3 3">'+
+    '<circle cx="180" cy="180" r="168"/><circle cx="180" cy="180" r="170"/><circle cx="180" cy="180" r="178"/></svg>';
+  var boxKey = "";
+  function renderBounds(){
+    var list = S.view==="nowplaying" ? BOX[S.playing?"playing":"paused"]
+             : S.view==="eqFocus" ? BOX[S.param].concat(BOX.back)
+             : BOX[S.view] || [];
+    var key = S.view+S.playing+S.param;
+    if(key===boxKey) return; boxKey = key;
+    var html = (S.view==="clock"||S.view==="menu") ? "" : RINGS;
+    list.forEach(function(b){
+      html += '<b'+(b[5]?' class="lo"':'')+' style="left:'+b[1]+'px;top:'+b[2]+'px;width:'+b[3]+'px;height:'+b[4]+'px"><span>'+
+              b[0]+' '+b[1]+','+b[2]+' '+b[3]+'×'+b[4]+'</span></b>';
+    });
+    $("ovlBounds").innerHTML = html;
+  }
+  setInterval(renderBounds, 150);
+  $("tBounds").addEventListener("change", function(e){ dev.classList.toggle("show-bounds", e.target.checked); });
+  $("tZone").addEventListener("change", function(e){ dev.classList.toggle("show-zone", e.target.checked); });
+
+  // size
+  [].forEach.call(document.querySelectorAll("[data-z]"), function(b){
+    b.addEventListener("click", function(){
+      document.documentElement.style.setProperty("--dev", b.getAttribute("data-z")+"px");
+      [].forEach.call(document.querySelectorAll("[data-z]"), function(o){ o.classList.toggle("on", o===b); });
+      K = fit();
+    });
+  });
+
+  // pointer coordinates in design space
+  dev.addEventListener("pointermove", function(e){
+    var r = dev.getBoundingClientRect(), x = (e.clientX-r.left)/K, y = (e.clientY-r.top)/K;
+    var d = Math.sqrt((x-180)*(x-180)+(y-180)*(y-180));
+    $("coords").textContent = "x "+x.toFixed(1)+"  y "+y.toFixed(1)+"  ·  "+(d/180*100).toFixed(0)+"% of radius";
+  });
+  dev.addEventListener("pointerleave", function(){ $("coords").textContent = "Point at the screen for 360 × 360 coordinates"; });
+
+  function onView(was){
+    [].forEach.call(flow.children, function(b){ b.classList.toggle("on", b.getAttribute("data-v")===S.view); });
+    renderCtx();
+    if(was!==S.view && logEl) log("→ "+NAMES[S.view]+(S.view==="eqFocus"?" ("+PNAME[S.param]+")":""));
+  }
+
+  K=fit(); renderMenu(); renderAlbums(); renderNP(); show("clock");
+})();
+</script>
+</body>
+</html>
