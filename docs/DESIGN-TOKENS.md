@@ -39,6 +39,11 @@ Menu unselected items render at `#808080`, selected at `#FFFFFF`.
 | Arc | radius 170 → 178 (8px), centred in the ring |
 | Arc start | 6 o'clock, clockwise |
 | Arc caps | round |
+| Album art clip | radius 174, so art ends under the solid black ring |
+
+Album art must never reach the panel edge. If art and ring both run to the edge, each is
+antialiased there and a thin fringe of art shows through the rim. Clipping the art at
+r=174, under the opaque ring, leaves only black at the edge.
 
 The 2px of black either side of the arc is deliberate — it prevents two edges
 antialiasing onto the same pixel, which produced a visible fringe.
